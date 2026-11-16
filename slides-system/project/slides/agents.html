@@ -1,0 +1,15 @@
+<section id="agents" class="plain">
+<p class="eyebrow">Component 3 &middot; live</p>
+<h2>Six specialists, <span style="color:#3FCCBE">each with its own tools</span></h2>
+<table>
+<tr><th style="width:18%">Agent</th><th style="width:30%">Job</th><th style="width:30%">Calls</th><th style="width:22%">Model tier</th></tr>
+<tr><td>Ledger</td><td>OCR a bill, categorise, reconcile against UPI</td><td>PaddleOCR, bank/AA feed</td><td>Tier 1 (local)</td></tr>
+<tr><td>Compliance</td><td>GST draft, ITC match, e-way, deadlines</td><td>GST sandbox, Udyam</td><td>Tier 1, escalate on mismatch</td></tr>
+<tr><td>Scheme</td><td>Match eligibility, cite the clause</td><td>Scheme knowledge base (RAG)</td><td>Tier 1 + retrieval</td></tr>
+<tr><td>Credit</td><td>Cash-flow score with plain-language reasons</td><td>LightGBM + SHAP, consented AA data</td><td>Nightly batch score</td></tr>
+<tr><td>Document</td><td>Assemble the loan packet, find gaps</td><td>OCEN/ULI (simulated)</td><td>Tier 1</td></tr>
+<tr><td>Follow-up</td><td>Track the file, nudge, watch for rule changes</td><td>Scheme KB, calendar</td><td>Tier 1</td></tr>
+</table>
+<div class="box"><p>Every agent call is a tool call with a typed schema, not free text &mdash; this is exactly what Qwen2.5's trained function-calling strength is for (see slide 10).</p></div>
+<aside>No agent talks to the owner directly. Every output from every agent passes through the verifier (next slide) before it's shown.</aside>
+</section>

@@ -1,0 +1,19 @@
+<section id="tcr">
+<p class="eyebrow">Component 1 &middot; live</p>
+<h2>The <span style="color:#3FCCBE">Tiered Cognition Router</span></h2>
+<p class="lede" style="width:1300px">Not every message needs a big brain. The router decides, in milliseconds, whether a small local model can answer or the turn needs to escalate.</p>
+<div class="row" style="gap:40px; align-items:stretch">
+<div class="card live" style="flex:1.1">
+<p class="tag">~85% of turns</p>
+<h3>Tier 1 &middot; local 7B</h3>
+<p>Classify a bill, extract a number, pick an intent, draft a routine reply. Qwen2.5-7B-AWQ, on the cloud runtime, answers in under 2 seconds.</p>
+</div>
+<div class="card batch" style="flex:1">
+<p class="tag b">~15% of turns</p>
+<h3>Tier 2 &middot; escalation</h3>
+<p>A novel eligibility edge case, an ambiguous notice, a low-confidence OCR read. Goes to a larger model (hosted API or next batch run), with the owner told it will take longer.</p>
+</div>
+</div>
+<div class="box"><p>Why it matters: cost and latency collapse because the expensive model is only called when it changes the decision &mdash; not on every turn. This is what keeps the live server inside 15GB VRAM.</p></div>
+<aside>This is one of our original contributions, not a standard pattern. The 85/15 split is a design target we'll tune against real traffic once we have usage data.</aside>
+</section>

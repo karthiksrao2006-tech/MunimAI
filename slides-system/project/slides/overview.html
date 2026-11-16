@@ -1,0 +1,66 @@
+<section id="overview" class="plain">
+<p class="eyebrow">The AI system, end to end</p>
+<h2>Router &rarr; orchestrator &rarr; agents &rarr; verifier</h2>
+<svg viewBox="0 0 1664 640" role="img" aria-label="A WhatsApp message enters the tiered cognition router, which sends most turns to a small local model and hard cases to escalation. The router hands off to the orchestrator, which calls whichever of six specialist agents the task needs. Every agent's output passes through a verifier gate before reaching the owner. A separate nightly batch path on the supercomputer feeds model updates back into the router." style="width:100%; height:auto;">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8793A1"/></marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3FCCBE"/></marker>
+    <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#E8A33D"/></marker>
+  </defs>
+  <rect x="20" y="40" width="220" height="80" rx="8" fill="none" stroke="#8793A1" stroke-width="2"/>
+  <text x="130" y="75" text-anchor="middle" font-size="22" fill="#E7EBEE" font-family="Space Grotesk">Owner</text>
+  <text x="130" y="100" text-anchor="middle" font-size="16" fill="#8793A1" font-family="IBM Plex Mono">WhatsApp</text>
+
+  <line x1="240" y1="80" x2="340" y2="80" stroke="#8793A1" stroke-width="2" marker-end="url(#a1)"/>
+
+  <rect x="340" y="30" width="260" height="100" rx="8" fill="none" stroke="#3FCCBE" stroke-width="2.4"/>
+  <text x="470" y="65" text-anchor="middle" font-size="22" fill="#3FCCBE" font-family="Space Grotesk" font-weight="600">Router (TCR)</text>
+  <text x="470" y="92" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">85% local 7B &middot; 15% escalate</text>
+  <text x="470" y="112" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">slide 4</text>
+
+  <line x1="600" y1="80" x2="700" y2="80" stroke="#3FCCBE" stroke-width="2.4" marker-end="url(#a2)"/>
+
+  <rect x="700" y="30" width="280" height="100" rx="8" fill="none" stroke="#3FCCBE" stroke-width="2.4"/>
+  <text x="840" y="65" text-anchor="middle" font-size="22" fill="#3FCCBE" font-family="Space Grotesk" font-weight="600">Orchestrator</text>
+  <text x="840" y="92" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">LangGraph &middot; plans across days</text>
+  <text x="840" y="112" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">slide 5</text>
+
+  <line x1="840" y1="130" x2="840" y2="190" stroke="#3FCCBE" stroke-width="2.4" marker-end="url(#a2)"/>
+
+  <rect x="320" y="200" width="1040" height="140" rx="8" fill="none" stroke="#2A303A" stroke-width="2" stroke-dasharray="3 5"/>
+  <text x="840" y="225" text-anchor="middle" font-size="16" fill="#8793A1" font-family="IBM Plex Mono">six specialist agents &middot; slide 6</text>
+  <g font-family="IBM Plex Mono" font-size="18" fill="#E7EBEE">
+    <rect x="340" y="245" width="150" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="415" y="285" text-anchor="middle">Ledger</text>
+    <rect x="500" y="245" width="150" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="575" y="285" text-anchor="middle">Compliance</text>
+    <rect x="660" y="245" width="150" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="735" y="285" text-anchor="middle">Scheme</text>
+    <rect x="820" y="245" width="150" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="895" y="285" text-anchor="middle">Credit</text>
+    <rect x="980" y="245" width="150" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="1055" y="285" text-anchor="middle">Document</text>
+    <rect x="1140" y="245" width="190" height="70" rx="6" fill="#171B21" stroke="#2A303A"/><text x="1235" y="285" text-anchor="middle">Follow-up</text>
+  </g>
+
+  <line x1="840" y1="340" x2="840" y2="400" stroke="#3FCCBE" stroke-width="2.4" marker-end="url(#a2)"/>
+
+  <rect x="620" y="410" width="440" height="90" rx="8" fill="none" stroke="#D9705A" stroke-width="2.4"/>
+  <text x="840" y="445" text-anchor="middle" font-size="22" fill="#D9705A" font-family="Space Grotesk" font-weight="600">Verifier gate</text>
+  <text x="840" y="470" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">citation + consent + rule version &middot; slide 7</text>
+
+  <line x1="840" y1="500" x2="840" y2="550" stroke="#3FCCBE" stroke-width="2.4" marker-end="url(#a2)"/>
+  <text x="870" y="530" font-size="16" fill="#8793A1" font-family="IBM Plex Mono">pass</text>
+  <line x1="130" y1="500" x2="130" y2="550" stroke="#8793A1" stroke-width="1.6" stroke-dasharray="2 4"/>
+  <path d="M 620 455 C 300 455, 160 480, 130 500" fill="none" stroke="#D9705A" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#a1)"/>
+  <text x="300" y="400" font-size="15" fill="#D9705A" font-family="IBM Plex Mono">fail &rarr; held, owner told why</text>
+
+  <rect x="20" y="550" width="220" height="70" rx="8" fill="none" stroke="#8793A1" stroke-width="2"/>
+  <text x="130" y="582" text-anchor="middle" font-size="18" fill="#E7EBEE" font-family="Space Grotesk">Back to owner</text>
+
+  <rect x="1360" y="200" width="280" height="140" rx="8" fill="none" stroke="#E8A33D" stroke-width="2.4"/>
+  <text x="1500" y="230" text-anchor="middle" font-size="20" fill="#E8A33D" font-family="Space Grotesk" font-weight="600">Nightly Batch Brain</text>
+  <text x="1500" y="258" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">PS-BOSS-OS &middot; Slurm</text>
+  <text x="1500" y="282" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">fine-tune &middot; batch OCR</text>
+  <text x="1500" y="306" text-anchor="middle" font-size="15" fill="#8793A1" font-family="IBM Plex Mono">re-score &middot; slide 8</text>
+  <path d="M 1360 270 C 1150 270, 1000 160, 980 80" fill="none" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a3)"/>
+  <text x="1130" y="150" font-size="15" fill="#E8A33D" font-family="IBM Plex Mono">nightly model update</text>
+</svg>
+<p class="source">Fig. &middot; cyan = live, every turn &middot; amber = batch, nightly on the supercomputer &middot; red = a block, not a pass</p>
+<aside>This is the map for the next six slides. Point at each box as you reach its slide. The one thing to land here: the GPU box never sits on this live path at all &mdash; it only feeds it, once a night.</aside>
+</section>

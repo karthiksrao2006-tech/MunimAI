@@ -1,0 +1,27 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime artifacts
+traces/
+*.wav
+*.mp3
+thermal_log.csv
+bhashini_probe_result.json
+bhashini_test_result.json
+
+# Models / large files (belong on Hugging Face, not git)
+models/
+*.safetensors
+*.gguf

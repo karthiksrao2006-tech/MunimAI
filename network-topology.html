@@ -1,0 +1,271 @@
+<title>Supercomputer Link Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*
+  Layout concept: a vertical "connection stack" — each layer of the path from
+  laptop to GPU drawn as its own band, so the reader can see exactly where
+  Tailscale's identity mesh ends and the shared HPC box begins.
+*/
+:root{
+  --bg:#F6F4EE; --panel:#FFFFFF; --ink:#1A1D16; --ink2:#5B5F52;
+  --line:#D8D4C6; --accent:#C65D2E; --accent2:#2E6E5E;
+  --mono-bg:#1A1D16; --mono-fg:#E9E6DA; --good:#2E6E5E; --warn:#B8862E;
+  --font-display:'Space Grotesk',Arial,sans-serif;
+  --font-body:'Inter',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono','Courier New',monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#15160F; --panel:#1D1F16; --ink:#EDEBDF; --ink2:#A7A594;
+    --line:#35372B; --accent:#E07A4A; --accent2:#4FA38B;
+    --mono-bg:#0E0F0A; --mono-fg:#D9D6C7; --good:#4FA38B; --warn:#D9A54A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15160F; --panel:#1D1F16; --ink:#EDEBDF; --ink2:#A7A594;
+  --line:#35372B; --accent:#E07A4A; --accent2:#4FA38B;
+  --mono-bg:#0E0F0A; --mono-fg:#D9D6C7; --good:#4FA38B; --warn:#D9A54A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-body);
+  margin:0; padding-block:32px 96px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:920px; margin:0 auto; display:flex; flex-direction:column; gap:56px;}
+h1{
+  font-family:var(--font-display); font-weight:600; font-size:clamp(28px,5vw,42px);
+  letter-spacing:-0.5px; margin:0 0 6px; text-wrap:balance;
+}
+.sub{color:var(--ink2); font-size:16px; max-width:640px; line-height:1.5; margin:0;}
+.eyebrow{
+  font-family:var(--font-mono); font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--accent); margin:0 0 10px;
+}
+section{display:flex; flex-direction:column; gap:16px;}
+h2{font-family:var(--font-display); font-size:24px; font-weight:600; margin:0; letter-spacing:-0.2px;}
+p.lead{color:var(--ink2); font-size:15px; line-height:1.6; max-width:680px; margin:0;}
+figure{margin:0; display:flex; flex-direction:column; gap:10px;}
+svg{width:100%; height:auto; display:block; color:var(--ink);}
+figcaption{font-size:13px; color:var(--ink2); line-height:1.5; max-width:680px;}
+.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  padding:20px 22px;
+}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:6px 18px; font-family:var(--font-mono); font-size:13px;}
+.kv dt{color:var(--ink2);}
+.kv dd{margin:0; color:var(--ink); word-break:break-word;}
+.pill{
+  display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px;
+  padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--ink2);
+}
+.pill.good{border-color:var(--good); color:var(--good);}
+.pill.warn{border-color:var(--warn); color:var(--warn);}
+.row{display:flex; flex-wrap:wrap; gap:8px;}
+.console{
+  background:var(--mono-bg); color:var(--mono-fg); font-family:var(--font-mono);
+  font-size:12.5px; line-height:1.65; border-radius:4px; padding:16px 18px;
+  overflow-x:auto; white-space:pre;
+}
+.console .c1{color:var(--accent2);}
+.console .c2{color:#8B8E7D;}
+table{width:100%; border-collapse:collapse; font-size:14px;}
+th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:13px;}
+th{color:var(--ink2); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;}
+.tag-live{color:var(--good);} .tag-batch{color:var(--accent);} .tag-shared{color:var(--warn);}
+hr{border:none; border-top:1px solid var(--line); margin:0;}
+footer{color:var(--ink2); font-size:12px; font-family:var(--font-mono);}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">MunimAI &middot; infra note</p>
+    <h1>How this laptop reaches the GPU box</h1>
+    <p class="sub">The real path a command takes from your terminal to PS&#8209;BOSS&#8209;OS, as confirmed live on 2026&#8209;11&#8209;16 &mdash; not the spec sheet, the actual wire.</p>
+  </header>
+
+  <section>
+    <h2>1&nbsp;&middot;&nbsp;The mesh, not a cable</h2>
+    <p class="lead">There is no office LAN between these two machines. Tailscale gives each device a stable <code>100.x.x.x</code> address and punches a direct, encrypted path between them over the open internet &mdash; a coordination server only introduces the pair once.</p>
+    <figure>
+      <svg viewBox="0 0 880 300" role="img" aria-label="Laptop and supercomputer each connect to the Tailscale coordination plane, which introduces them, then traffic flows directly between the two over an encrypted WireGuard tunnel.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- coordination plane -->
+        <rect x="320" y="20" width="240" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <text x="440" y="48" text-anchor="middle" font-size="13" fill="currentColor" font-family="IBM Plex Mono, monospace">login.tailscale.com</text>
+        <text x="440" y="66" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.6" font-family="IBM Plex Mono, monospace">coordination + ACL policy</text>
+
+        <!-- laptop -->
+        <rect x="40" y="150" width="200" height="90" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="140" y="183" text-anchor="middle" font-size="14" fill="currentColor" font-family="Space Grotesk, sans-serif" font-weight="600">Your laptop</text>
+        <text x="140" y="203" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">100.78.124.73</text>
+        <text x="140" y="218" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">laptop-re76qh5f</text>
+
+        <!-- supercomputer -->
+        <rect x="640" y="150" width="200" height="90" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="740" y="183" text-anchor="middle" font-size="14" fill="currentColor" font-family="Space Grotesk, sans-serif" font-weight="600">PS-BOSS-OS</text>
+        <text x="740" y="203" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">100.86.188.31</text>
+        <text x="740" y="218" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">RTX 5000 Ada &middot; 32GB</text>
+
+        <!-- registration arrows up -->
+        <line x1="180" y1="150" x2="370" y2="92" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text x="245" y="128" font-size="11" fill="currentColor" opacity="0.75" font-family="IBM Plex Mono, monospace">registers identity</text>
+
+        <line x1="700" y1="150" x2="500" y2="92" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text x="563" y="128" font-size="11" fill="currentColor" opacity="0.75" font-family="IBM Plex Mono, monospace" text-anchor="end">registers identity</text>
+
+        <!-- direct tunnel -->
+        <line x1="240" y1="195" x2="640" y2="195" stroke="currentColor" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <text x="440" y="180" text-anchor="middle" font-size="12.5" fill="currentColor" font-family="IBM Plex Mono, monospace">direct WireGuard tunnel &middot; SSH :22</text>
+        <text x="440" y="265" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.6" font-family="IBM Plex Mono, monospace">once introduced, this leg never touches login.tailscale.com again</text>
+      </svg>
+      <figcaption>Fig. 1 &mdash; The coordination server only hands out the map once; every SSH byte afterward goes laptop&#8201;&harr;&#8201;GPU&#8201;box directly, end&#8209;to&#8209;end encrypted.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>2&nbsp;&middot;&nbsp;What changed today: the SSH gate</h2>
+    <p class="lead">Tailscale SSH sits in front of the OS login and decides, per policy, whether a session needs a fresh human check. Before today it did; now it doesn't &mdash; this is the exact difference that unblocked the agent.</p>
+    <figure>
+      <svg viewBox="0 0 880 260" role="img" aria-label="Before: SSH connection pauses for a browser identity check every twelve hours, blocking unattended scripts. After: the same connection is accepted immediately because the Tailscale ACL rule changed from check to accept.">
+        <defs>
+          <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- BEFORE row -->
+        <text x="10" y="26" font-size="12" fill="currentColor" opacity="0.55" font-family="IBM Plex Mono, monospace" letter-spacing="1.5">BEFORE &middot; action: "check"</text>
+        <rect x="10" y="40" width="130" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="75" y="67" text-anchor="middle" font-size="12" fill="currentColor" font-family="IBM Plex Mono, monospace">ssh admin@...</text>
+        <line x1="140" y1="63" x2="330" y2="63" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow2)"/>
+        <rect x="330" y="35" width="220" height="56" rx="3" fill="none" stroke="#B8862E" stroke-width="1.6"/>
+        <text x="440" y="58" text-anchor="middle" font-size="12" fill="#B8862E" font-family="IBM Plex Mono, monospace">browser identity check</text>
+        <text x="440" y="75" text-anchor="middle" font-size="11" fill="#B8862E" opacity="0.8" font-family="IBM Plex Mono, monospace">login.tailscale.com/a/...</text>
+        <line x1="550" y1="63" x2="700" y2="63" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <text x="625" y="55" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.6" font-family="IBM Plex Mono, monospace">session hangs</text>
+        <rect x="700" y="40" width="150" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.4"/>
+        <text x="775" y="67" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.5" font-family="IBM Plex Mono, monospace">shell on GPU box</text>
+
+        <!-- AFTER row -->
+        <text x="10" y="150" font-size="12" fill="currentColor" opacity="0.55" font-family="IBM Plex Mono, monospace" letter-spacing="1.5">AFTER &middot; action: "accept"</text>
+        <rect x="10" y="164" width="130" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="75" y="191" text-anchor="middle" font-size="12" fill="currentColor" font-family="IBM Plex Mono, monospace">ssh admin@...</text>
+        <line x1="140" y1="187" x2="700" y2="187" stroke="#2E6E5E" stroke-width="2.2" marker-end="url(#arrow2)"/>
+        <text x="420" y="178" text-anchor="middle" font-size="12" fill="#2E6E5E" font-family="IBM Plex Mono, monospace">device identity trusted &middot; no prompt</text>
+        <rect x="700" y="164" width="150" height="46" rx="3" fill="none" stroke="#2E6E5E" stroke-width="1.6"/>
+        <text x="775" y="191" text-anchor="middle" font-size="12" fill="#2E6E5E" font-family="IBM Plex Mono, monospace">shell on GPU box</text>
+      </svg>
+      <figcaption>Fig. 2 &mdash; Same command, same two machines. The only variable is one word in the Tailscale ACL (<code>check</code> &rarr; <code>accept</code>), which is what let an unattended agent log in at 11:23 without a human present.</figcaption>
+    </figure>
+    <div class="console"><span class="c2">$</span> ssh admin@100.86.188.31 <span class="c2">'echo CONNECTED_OK; hostname'</span>
+<span class="c1">CONNECTED_OK</span>
+PS-BOSS-OS</div>
+  </section>
+
+  <section>
+    <h2>3&nbsp;&middot;&nbsp;What's actually sitting on the box</h2>
+    <p class="lead">This confirms it: a shared, already-provisioned HPC node, not a blank machine &mdash; Slurm is running, MATLAB holds a license, the GPU is idle and free.</p>
+    <div class="panel">
+      <div class="kv">
+        <dt>GPU 0</dt><dd>RTX 5000 Ada &middot; 32768&nbsp;MiB &middot; 15&nbsp;MiB used, rest free</dd>
+        <dt>GPU 1</dt><dd>RTX A400 &middot; 4094&nbsp;MiB</dd>
+        <dt>CPU</dt><dd>2&times; Xeon Gold 6240R &middot; 48 threads</dd>
+        <dt>RAM</dt><dd>187&nbsp;GiB total &middot; 176&nbsp;GiB free</dd>
+        <dt>/home</dt><dd>13&nbsp;TB volume &middot; 12&nbsp;TB free</dd>
+        <dt>Scheduler</dt><dd>Slurm &middot; partition <code>Standard*</code> &middot; node idle &middot; 8h time limit</dd>
+      </div>
+    </div>
+    <div class="row">
+      <span class="pill good">GPU free right now</span>
+      <span class="pill">Slurm present</span>
+      <span class="pill warn">shared, multi-tenant box</span>
+      <span class="pill warn">sudo needs a password &mdash; no root yet</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>4&nbsp;&middot;&nbsp;How a request will actually flow once MunimAI is running</h2>
+    <p class="lead">This box is never the live server a business owner talks to. It's the overnight factory. Here's the division of labour end to end.</p>
+    <figure>
+      <svg viewBox="0 0 900 460" role="img" aria-label="Owner on WhatsApp talks to a small cloud server holding the live 7 billion parameter model, which calls tool APIs directly. That cloud server reaches the Tailscale network only to pull nightly model updates and send synthetic data jobs to the supercomputer, which runs training and batch scoring under Slurm and pushes results back through the same tunnel. The supercomputer never talks to WhatsApp directly.">
+        <defs>
+          <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- owner -->
+        <rect x="20" y="20" width="160" height="56" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="100" y="53" text-anchor="middle" font-size="13" fill="currentColor" font-family="Space Grotesk, sans-serif" font-weight="600">Owner &middot; WhatsApp</text>
+
+        <line x1="100" y1="76" x2="100" y2="130" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow3)"/>
+        <text x="112" y="106" font-size="11" fill="currentColor" opacity="0.7" font-family="IBM Plex Mono, monospace">voice / bill photo</text>
+
+        <!-- cloud live server -->
+        <rect x="20" y="136" width="300" height="100" rx="3" fill="none" stroke="#2E6E5E" stroke-width="1.8"/>
+        <text x="170" y="164" text-anchor="middle" font-size="13" fill="#2E6E5E" font-family="Space Grotesk, sans-serif" font-weight="600">Cloud runtime &middot; live</text>
+        <text x="170" y="184" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="IBM Plex Mono, monospace">7B model &middot; vLLM &middot; &lt;15GB VRAM</text>
+        <text x="170" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75" font-family="IBM Plex Mono, monospace">orchestrator + 6 agents + verifier</text>
+        <text x="170" y="216" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.6" font-family="IBM Plex Mono, monospace">answers in seconds, every turn</text>
+
+        <!-- tool mesh -->
+        <rect x="360" y="136" width="200" height="100" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <text x="460" y="164" text-anchor="middle" font-size="12" fill="currentColor" font-family="IBM Plex Mono, monospace">tool APIs</text>
+        <text x="460" y="182" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">AA &middot; GST sandbox</text>
+        <text x="460" y="198" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">Udyam &middot; OCEN/ULI (sim)</text>
+        <line x1="320" y1="186" x2="360" y2="186" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow3)"/>
+        <text x="340" y="176" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.6">calls</text>
+
+        <!-- down to tailscale -->
+        <line x1="170" y1="236" x2="170" y2="300" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow3)"/>
+        <text x="182" y="272" font-size="11" fill="currentColor" opacity="0.7" font-family="IBM Plex Mono, monospace">nightly only &middot; pulls model update</text>
+
+        <!-- tailscale node label -->
+        <rect x="20" y="306" width="300" height="34" rx="3" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3"/>
+        <text x="170" y="328" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65" font-family="IBM Plex Mono, monospace">Tailscale tunnel (Fig. 1 + 2)</text>
+
+        <line x1="170" y1="340" x2="170" y2="384" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow3)"/>
+
+        <!-- supercomputer batch -->
+        <rect x="20" y="390" width="440" height="60" rx="3" fill="none" stroke="#C65D2E" stroke-width="1.8"/>
+        <text x="240" y="414" text-anchor="middle" font-size="13" fill="#C65D2E" font-family="Space Grotesk, sans-serif" font-weight="600">PS-BOSS-OS &middot; Slurm batch</text>
+        <text x="240" y="432" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-family="IBM Plex Mono, monospace">QLoRA fine-tune &middot; bulk OCR &middot; nightly credit re-score &middot; synthetic data</text>
+
+        <!-- note: no direct line to owner -->
+        <line x1="580" y1="48" x2="580" y2="420" stroke="currentColor" stroke-width="1" stroke-dasharray="2 5" opacity="0.4"/>
+        <text x="610" y="48" font-size="11" fill="currentColor" opacity="0.55" font-family="IBM Plex Mono, monospace">no path</text>
+        <text x="700" y="48" font-size="11" fill="currentColor" opacity="0.55" font-family="IBM Plex Mono, monospace">PS-BOSS-OS never</text>
+        <text x="700" y="64" font-size="11" fill="currentColor" opacity="0.55" font-family="IBM Plex Mono, monospace">faces WhatsApp directly</text>
+      </svg>
+      <figcaption>Fig. 3 &mdash; The GPU box talks only to the cloud runtime, over the same Tailscale tunnel, and only for batch jobs. It has no route to the owner's phone. This is what keeps the live path inside the 15GB budget regardless of what runs overnight.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>5&nbsp;&middot;&nbsp;Who talks to whom, at a glance</h2>
+    <div class="panel" style="padding:0; overflow-x:auto;">
+      <table>
+        <tr><th>Leg</th><th>Protocol</th><th>Frequency</th><th>Carries</th></tr>
+        <tr><td>Owner &rarr; Cloud runtime</td><td>WhatsApp API / HTTPS</td><td class="tag-live">every turn</td><td>voice, photos, approvals</td></tr>
+        <tr><td>Cloud runtime &rarr; Tool APIs</td><td>HTTPS / MCP</td><td class="tag-live">every turn</td><td>AA consent, GST draft, scheme lookup</td></tr>
+        <tr><td>Cloud runtime &harr; PS-BOSS-OS</td><td>Tailscale (WireGuard)</td><td class="tag-batch">nightly / on-demand</td><td>model weights, synthetic data, batch results</td></tr>
+        <tr><td>You (laptop) &harr; PS-BOSS-OS</td><td>Tailscale SSH</td><td class="tag-shared">dev sessions</td><td>training runs, eval jobs, Slurm submissions</td></tr>
+        <tr><td>PS-BOSS-OS &rarr; Owner</td><td>&mdash;</td><td class="tag-shared">never</td><td>no direct path, by design</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <hr/>
+  <footer>Captured live from PS-BOSS-OS, 2026-11-16 11:23 IST &middot; MunimAI infra notes</footer>
+
+</div>

@@ -1,0 +1,14 @@
+<section id="modelchoice">
+<p class="eyebrow">Why this model</p>
+<h2>Qwen2.5-7B-Instruct-<span style="color:#3FCCBE">AWQ</span></h2>
+<table>
+<tr><th style="width:28%">Factor</th><th style="width:72%">Reasoning</th></tr>
+<tr><td>Tool-calling</td><td>Trained as a headline feature, not an afterthought &mdash; our whole architecture runs on structured JSON tool calls between agents</td></tr>
+<tr><td>Quantization</td><td>Official AWQ build from the Qwen team itself, tested against vLLM by the model's own authors</td></tr>
+<tr><td>License</td><td>Apache 2.0 &mdash; no restrictions to track if a fine-tune is ever shared with a lender partner</td></tr>
+<tr><td>Multilingual</td><td>Strong open-community track record on Hindi; Kannada untested &mdash; flagged as a real gap, not assumed</td></tr>
+<tr><td>Fit to budget</td><td>~6GB at 4-bit, leaves headroom inside the 15GB live VRAM cap</td></tr>
+</table>
+<div class="box"><p class="small">Honest note: this was an engineering default based on known strengths, not a benchmarked bake-off against alternatives like Gemma. The GPU is free to run that comparison whenever it's worth the time.</p></div>
+<aside>Be ready for a judge to ask "why not X" &mdash; this slide is the answer, including where we're not fully certain yet.</aside>
+</section>

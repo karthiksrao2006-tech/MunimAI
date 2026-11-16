@@ -1,0 +1,12 @@
+<section id="nbb">
+<p class="eyebrow b">Component 5 &middot; batch</p>
+<h2>The <span style="color:#E8A33D">Nightly Batch Brain</span>: factory, not shop</h2>
+<p class="lede" style="width:1300px">The college supercomputer never talks to WhatsApp. It runs once a night, under Slurm, and only hands finished work back to the live side.</p>
+<div class="cards c3">
+<div class="card batch"><p class="tag b">Fine-tune</p><h3>QLoRA on Qwen</h3><p>Nightly adaptation to Indic bookkeeping terms, distilled back down to a 7&ndash;8B serving model.</p></div>
+<div class="card batch"><p class="tag b">Bulk OCR</p><h3>The day's backlog</h3><p>Any low-confidence bill photos from Tier 1 reprocessed at full strength overnight.</p></div>
+<div class="card batch"><p class="tag b">Re-score</p><h3>Every borrower</h3><p>Credit scores recomputed with the freshest consented data, SHAP reasons regenerated.</p></div>
+</div>
+<div class="box batch"><p><b>Why this box is safe to use hard:</b> it's a shared lab machine that reboots unpredictably (confirmed on PS-BOSS-OS). Every job here runs as an <span class="mono">sbatch</span> submission so Slurm can requeue it, instead of a bare SSH process that dies silently on restart.</p></div>
+<aside>This is the honest correction from our original spec: a 70B model needs ~40GB even at 4-bit, so it never runs live on the 32GB card &mdash; it's strictly a batch/fine-tuning tool here.</aside>
+</section>

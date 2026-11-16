@@ -1,0 +1,13 @@
+<section id="karigar">
+<p class="eyebrow b">Component 6 &middot; batch &middot; the new idea</p>
+<h2><span style="color:#E8A33D">Karigar</span>: the agent that builds agents</h2>
+<p class="lede" style="width:1300px">Karigar (literally "craftsman") is a meta-agent. When the system meets a task none of the six specialists cover, it doesn't fail &mdash; it drafts a new one.</p>
+<div class="row" style="gap:28px">
+<div class="step batch"><p class="k">1 &middot; gap found</p><p>Example: a new state rolls out a different e-way bill rule the Compliance agent doesn't handle.</p></div>
+<div class="step batch"><p class="k">2 &middot; draft</p><p>Karigar writes a SKILL.md, its tool bindings, and a small synthetic eval set &mdash; on the supercomputer, not live.</p></div>
+<div class="step batch"><p class="k">3 &middot; self-test</p><p>Runs the new agent against the eval set. Below a pass threshold, it is discarded, not shipped.</p></div>
+<div class="step batch"><p class="k">4 &middot; promote</p><p>Only a passing agent is registered with the orchestrator and reaches the live path.</p></div>
+</div>
+<div class="box batch"><p>The safety gate is the point: Karigar can propose, it cannot deploy. Step 3 is non-negotiable before anything it writes touches a real owner's business.</p></div>
+<aside>This is the "agent that creates other agents for problem-solving and coding" the team asked for, done with a hard gate so it stays safe on a product that touches real money and compliance.</aside>
+</section>

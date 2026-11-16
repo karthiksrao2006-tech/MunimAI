@@ -1,0 +1,16 @@
+<section id="trust" class="alt">
+<div class="margin"></div>
+<div class="margin2"></div>
+<p class="eyebrow">What makes it hard, and how we handle it</p>
+<h2>Built to be <i>trusted</i>, not just clever</h2>
+<table>
+<tr><th style="width:30%">Hard constraint</th><th style="width:70%">Our design answer</th></tr>
+<tr><td>Rules keep changing</td><td>Versioned rule base from CBIC and scheme notifications; every answer carries the rule version and date</td></tr>
+<tr><td>Every eligibility claim cited</td><td>RAG answers only from retrieved clauses; no citation, no claim. A verifier agent rejects uncited output</td></tr>
+<tr><td>Prepare vs file</td><td>Agents draft; filing and loan submission are simulated and need the owner’s or professional’s tap</td></tr>
+<tr><td>Fair, calibrated risk</td><td>Monotonic gradient boosting, calibration curves, gender and region parity checks with Fairlearn</td></tr>
+<tr><td>Explainable</td><td>Top 3 reasons in plain language for owner and banker, from SHAP values</td></tr>
+<tr><td>Consent only</td><td>Data via Account Aggregator consent artefacts, purpose-bound, revocable; DPDP Act aligned</td></tr>
+</table>
+<aside>Judges will probe this. The problem statement lists exactly these constraints: changing rules, cited eligibility, the line between preparing and filing, calibrated and fair risk, explainability, and consent. Point to each row.</aside>
+</section>

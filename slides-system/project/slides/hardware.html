@@ -1,0 +1,18 @@
+<section id="hardware" class="plain">
+<p class="eyebrow b">Where it runs</p>
+<h2>Hardware, confirmed <span style="color:#E8A33D">live on PS-BOSS-OS</span></h2>
+<table>
+<tr><th style="width:22%">Resource</th><th style="width:40%">Confirmed spec</th><th style="width:38%">Our usage rule</th></tr>
+<tr><td>GPU 0</td><td>RTX 5000 Ada, 32GB (fully free)</td><td>Live serving capped at ~15GB budget</td></tr>
+<tr><td>CPU / RAM</td><td>2&times; Xeon 6240R, 48 threads / 187GB</td><td>Batch jobs capped at ~45GB</td></tr>
+<tr><td>Disk</td><td>12TB free on /home</td><td>All project data under /home/admin/munimai</td></tr>
+<tr><td>Scheduler</td><td>Slurm, partition Standard*, idle</td><td>Every job via sbatch, never bare SSH</td></tr>
+<tr><td>Access</td><td>Tailscale SSH, unattended</td><td>No sudo; user-space conda installs only</td></tr>
+</table>
+<div class="row" style="gap:16px">
+<span class="pill live">GPU free right now</span>
+<span class="pill batch">shared teaching machine</span>
+<span class="pill" style="border-color:#D9705A; color:#D9705A">reboots unpredictably &mdash; Slurm handles it</span>
+</div>
+<aside>This is a shared lab box (faculty accounts, JupyterHub, MLflow already running as services) &mdash; not ours alone. Every design choice on the previous slides respects that.</aside>
+</section>

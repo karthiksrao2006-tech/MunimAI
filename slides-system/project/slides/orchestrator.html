@@ -1,0 +1,13 @@
+<section id="orchestrator">
+<p class="eyebrow">Component 2 &middot; live</p>
+<h2>The <span style="color:#3FCCBE">orchestrator</span> plans in days, not turns</h2>
+<p class="lede" style="width:1300px">Built on LangGraph. It is not a chatbot replying to one message &mdash; it holds a plan and a memory that spans a whole GST cycle.</p>
+<div class="row" style="gap:32px">
+<div class="step live"><p class="k">Day 1</p><p>40 bill photos arrive. Orchestrator hands them to the Ledger agent, flags 3 unclear ones, waits.</p></div>
+<div class="step live"><p class="k">Day 10</p><p>Deadline approaching. It wakes the Compliance agent on its own, drafts GSTR-1.</p></div>
+<div class="step live"><p class="k">Day 10</p><p>Compliance agent finds an ITC mismatch. Orchestrator decides: message the supplier first, then ask the owner.</p></div>
+<div class="step live"><p class="k">Day 20</p><p>Routes to Scheme + Credit agents only once GST is clean &mdash; it knows the order matters.</p></div>
+</div>
+<div class="box live"><p><b>State it holds per business:</b> ledger status, filing deadlines, open consent tokens, which agent is waiting on what, and a full audit trail of every decision &mdash; in Postgres, not in the model's context window.</p></div>
+<aside>This is the difference between "agentic" and "a chatbot with tools." The orchestrator decides when to act without being asked, across days, and remembers why it made each call.</aside>
+</section>

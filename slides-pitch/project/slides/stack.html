@@ -1,0 +1,22 @@
+<section id="stack" class="dark" data-transition="fade">
+<div class="margin"></div>
+<div class="margin2"></div>
+<p class="eyebrow">How we build it</p>
+<h2>Indian models do the <i>Indian languages</i></h2>
+<div class="cards c2" style="column-gap:96px">
+<div class="card">
+<p class="tag">Language layer · Bhashini (MeitY)</p>
+<h3>Verified working, not planned</h3>
+<p>Kannada and Hindi speech-to-text and text-to-speech round-tripped against live keys. Bhashini translation lets the reasoning model work in English and still answer her in Kannada.</p>
+<p class="small">We stop asking a foreign-trained model to write good Kannada.</p>
+</div>
+<div class="card">
+<p class="tag">Reasoning layer · Qwen2.5-7B-AWQ</p>
+<h3>Running on the college GPU today</h3>
+<p>14.4GB VRAM measured, inside our 15GB budget. Clean structured tool-calls — the capability the six-agent architecture depends on.</p>
+<p class="small">Fine-tuning and batch scoring run overnight under Slurm; the supercomputer is the factory, never the live server.</p>
+</div>
+</div>
+<div class="box" style="border:2px solid #E3A72F"><p style="color:#F4EEE2">Both numbers above are measured on our own hardware this week, not estimated.</p></div>
+<aside>This slide used to be about the supercomputer. It is now about a sharper point: we use Indian public AI infrastructure for Indic language and a small open model for reasoning, which is both cheaper and better than one big foreign model doing everything. The VRAM and the Bhashini round-trip are real measurements from our build.</aside>
+</section>
