@@ -88,7 +88,8 @@ class LLMSettings:
     """
 
     base_url: str
-    model: str
+    model_served_name: str   # what the OpenAI API expects in the "model" field
+    model_path: str          # the on-disk path, for reference
     timeout_s: int = 120
 
     @classmethod
@@ -97,8 +98,10 @@ class LLMSettings:
             base_url=os.environ.get(
                 "LLM_BASE_URL", "http://100.86.188.31:8077/v1"
             ),
-            model=os.environ.get(
-                "LLM_MODEL", "/home/admin/munimai/models/Qwen2.5-7B-Instruct-AWQ"
+            model_served_name=os.environ.get("LLM_MODEL", "qwen2.5-7b"),
+            model_path=os.environ.get(
+                "LLM_MODEL_PATH",
+                "/home/admin/munimai/models/Qwen2.5-7B-Instruct-AWQ",
             ),
             timeout_s=int(os.environ.get("LLM_TIMEOUT_S", "120")),
         )

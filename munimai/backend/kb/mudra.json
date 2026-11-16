@@ -1,0 +1,138 @@
+[
+  {
+    "scheme_code": "MUDRA_SHISHU",
+    "clause_ref": "loan_amount.shishu",
+    "clause_text": "Shishu : covering loans upto Rs 50,000/-",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_KISHORE",
+    "clause_ref": "loan_amount.kishore",
+    "clause_text": "Kishor : covering loans above Rs 50,000/- and upto 5 lakh",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_TARUN",
+    "clause_ref": "loan_amount.tarun",
+    "clause_text": "Tarun : covering loans above 5 lakh and upto 10 lakh",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_TARUN",
+    "clause_ref": "loan_amount.tarun_plus",
+    "clause_text": "Tarun Plus: covering loans above 10 lakh and upto 20 lakh. (FAQ adds: 'for those entrepreneurs who have availed and successfully repaid previous loans under the ‘Tarun’ category'.) Note: Tarun Plus is listed on the official MUDRA site as a fourth PMMY category; no separate scheme_code exists, so it is filed under MUDRA_TARUN.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_TARUN",
+    "clause_ref": "loan_amount.tarun_plus_condition",
+    "clause_text": "Tarun Plus : covering loans above 10 lakh to 20 lakh (for those entrepreneurs who have availed and successfully repaid previous loans under the ‘Tarun’ category).",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "eligibility.who_can_apply",
+    "clause_text": "Any Indian Citizen who has a business plan for a non-farm income generating activity such as manufacturing, processing, trading or service sector whose credit need is up to 20 lakh can approach either a Bank, MFI or NBFC for availing of MUDRA loans under PMMY.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "eligibility.enterprise_type",
+    "clause_text": "Any individual including women, proprietary concern, partnership firm, private limited company or any other entity are eligible applicant under PMMY loans, whose loan requirement is up to 20 lakh.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "eligibility.target_segment",
+    "clause_text": "Non–Corporate Small Business Segment (NCSB) comprising of millions of proprietorship / partnership firms running as small manufacturing units, service sector units, shopkeepers, fruits / vegetable vendors, truck operators, food-service units, repair shops, machine operators, small industries, artisans, food processors and others, in rural and urban areas.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "use_of_funds.purpose",
+    "clause_text": "Mudra loan is extended for a variety of purposes which result in income generation and employment creation. The loans are extended mainly for: Business loan for Vendors, Traders, Shopkeepers and other Service Sector activities; Working capital loan through MUDRA Cards; Equipment Finance for Micro Units; Transport Vehicle loans for commercial use only; Loans for agri-allied non-farm income generating activities, e.g. pisciculture. bee keeping, poultry farming, etc.; Tractors, tillers as well as two wheelers used for commercial purposes only.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "exclusions.agri_allied",
+    "clause_text": "'Activities allied to agriculture', e.g. pisciculture, bee keeping, poultry, livestock-rearing, ... (excluding crop loans, land improvement such as canal, irrigation and wells) and services supporting these, which promote livelihood or are income generating shall be eligible for coverage under PMMY in 2016-17.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "exclusions.vehicles_commercial_only",
+    "clause_text": "Transport Vehicle loans for commercial use only; Tractors, tillers as well as two wheelers used for commercial purposes only.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "collateral.no_collateral",
+    "clause_text": "Hence, MUDRA loans, i.e., loans up to 20 lakh, have been made collateral free, as per the RBI norms in this regard.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "collateral.rbi_mandate",
+    "clause_text": "As per the recommendations of the Working Group constituted by RBI for reviewing the Credit Guarantee Schemes for Micro Small Enterprises and accepted by RBI, Banks have been mandated not to insist for collateral security in the case of loans upto 20 lakh extended to the units in the Micro Small Enterprises sector.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "interest.rate",
+    "clause_text": "The interest rates are deregulated and the banks have been advised to charge reasonable interest rates within the overall RBI guidelines. (No fixed rate is stated by MUDRA.)",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "delivery.channel",
+    "clause_text": "MUDRA is a refinancing Institution. MUDRA does not lend directly to the micro entrepreneurs / individuals. Mudra loans under Pradhan Mantri Mudra Yojana (PMMY) can be availed of from nearby branch office of a bank, NBFC, MFIs etc.",
+    "source_url": "https://www.mudra.org.in/offerings",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "documents.pan_not_compulsory",
+    "clause_text": "PAN card is not compulsory to avail PMMY loans. However, the borrower may have to satisfy the KYC requirements of the financing institutions.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  },
+  {
+    "scheme_code": "MUDRA_GENERAL",
+    "clause_ref": "terms.lender_discretion",
+    "clause_text": "The terms and conditions of the loan will be governed by the rules and regulations of the lending institution and the broad guidelines of RBI.",
+    "source_url": "https://www.mudra.org.in/FAQ",
+    "source_domain": "mudra.org.in",
+    "fetched_at": "2026-11-16T13:28:53Z"
+  }
+]
