@@ -35,13 +35,15 @@ CANNED = {
     ),
     "thanks": "Anytime. Send another bill or ask another question whenever you need.",
     "capability": (
-        "Here is what I can do right now:\n\n"
-        "- Read bill photos and add the entry to your books (amount, GST rate, counterparty).\n"
-        "- Answer MUDRA loan eligibility questions — every answer cites the official clause.\n"
-        "- Prepare a GST summary (output tax, input credit, net payable) from your books.\n"
-        "- Build an affordability view a banker can read.\n\n"
-        "I understand Hindi and Kannada voice notes (through Bhashini). I never file "
-        "a return or submit a loan on your behalf — I prepare; you approve."
+        "Here is what I can do:\n\n"
+        "- Answer loan, subsidy and startup-funding questions from official scheme pages "
+        "(MUDRA, PMEGP, CGTMSE, SVANidhi, Stand-Up India, Startup India and more), always naming the clause.\n"
+        "- Read your bills, PDFs and certificates, add bills to your books, and answer questions about your documents.\n"
+        "- Search the web when the official pages do not cover a question, and say clearly where the answer came from.\n"
+        "- Prepare a GST summary and a bank file (PDF), and draft a loan application and covering letter.\n"
+        "- Save any answer as a PDF or an image.\n\n"
+        "I understand and reply in Kannada, Hindi and English, by voice or text. I never file a return or "
+        "submit a loan for you: I prepare, you review and decide."
     ),
     "documents": (
         "For MunimAI to work, send me what the business already has:\n\n"
@@ -60,12 +62,29 @@ def classify(text: str) -> Intent:
     if not t:
         return "unknown"
 
+    # deliverables first: they contain words ("loan", "documents") that would
+    # otherwise route to eligibility or the canned documents reply
+    if _any(t, [r"\bbank[- ]?(ready )?(file|dossier|pack)\b", r"\bloan file\b", r"\bdossier\b",
+                r"\bprepare (my|the) (file|documents|pack)\b", r"\bpdf (of|with) my (documents|books|proofs)\b"]):
+        return "dossier"
+    if _any(t, [r"\b(draft|write|prepare|make|create)\b.*\b(loan )?application\b", r"\bapplication (letter|form|draft)\b",
+                r"\bletter to (the )?(bank|sbi|branch)\b", r"\bdetailed draft\b"]):
+        return "application"
+    if _any(t, [r"\b(as|in|into|to) (a |an )?(pdf|image|png|jpeg|picture)\b",
+                r"\b(save|send|give|download|make|export)\b.*\b(pdf|image|png|picture)\b"]):
+        return "export"
+
     # eligibility — strong signals win first
     if _any(t, [
         r"\bmudra\b", r"\bkishore\b", r"\bshishu\b", r"\btarun\b",
         r"\bloan\b", r"\bgive me money\b", r"\beligib", r"\bqualify\b",
         r"\bam i (eligible|able)\b", r"\bpaisa\b", r"\brupees\b",
         r"\bfinance\b", r"\bbusiness loan\b",
+        r"\bpmegp\b", r"\bcgtmse\b", r"\bsvanidhi\b", r"\bstand[- ]?up\b", r"\bstartup\b", r"\bsubsid",
+        r"\bseed fund\b", r"\bfund of funds\b", r"\bnidhi\b", r"\bvishwakarma\b", r"\bnsic\b",
+        r"\bgrant\b", r"\bsidbi\b", r"\bjan samarth\b", r"\bcollateral\b", r"\bguarantee\b",
+        r"\b(which|what) (government |govt )?(scheme|schemes|subsidy|loan)\b", r"\bseed (funding|capital)\b",
+        r"\b(government|govt|central|state) (loan |msme )?schemes?\b", r"\bmsme schemes?\b",
     ]):
         return "eligibility"
 

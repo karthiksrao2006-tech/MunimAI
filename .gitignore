@@ -25,3 +25,8 @@ bhashini_test_result.json
 models/
 *.safetensors
 *.gguf
+
+munimai/uploads/
+munimai/seeds_pending.jsonl
+munimai/gateway.err
+tools/

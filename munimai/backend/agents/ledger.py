@@ -156,7 +156,12 @@ class LedgerAgent:
         if gst_bp is not None and not (0 <= gst_bp <= 10000):
             gst_bp = None
 
-        entry_date = parsed.get("date") or date.today().isoformat()
+        entry_date = date.today().isoformat()
+        raw_date = str(parsed.get("date") or "").strip()[:10]
+        try:  # the model sometimes returns the text "null" or a bad date
+            entry_date = date.fromisoformat(raw_date).isoformat()
+        except ValueError:
+            pass
 
         row = self.conn.execute(
             """INSERT INTO ledger_entries

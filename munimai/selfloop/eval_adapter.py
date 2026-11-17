@@ -26,7 +26,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--adapter", required=True)
     ap.add_argument("--data", required=True)
-    ap.add_argument("--vram_fraction", type=float, default=0.45)
+    ap.add_argument("--vram_fraction", type=float, default=0.24)
     a = ap.parse_args()
 
     torch.cuda.set_per_process_memory_fraction(a.vram_fraction, 0)

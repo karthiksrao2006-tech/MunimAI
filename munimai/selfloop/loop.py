@@ -36,6 +36,22 @@ SEEDS = WORK / "seeds.jsonl"
 STATE = WORK / "state.json"
 LOG = WORK / "loop.log"
 PY = sys.executable
+GPU_BUDGET_MIB = 17 * 1024   # hard limit for ALL GPU use: Qwen server + training/eval together
+JOB_MIB = 8000               # what one training/eval job may add (fraction 0.24 of the card)
+
+
+def gpu_used_mib() -> int:
+    r = subprocess.run(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits", "-i", "0"],
+                       capture_output=True, text=True)
+    return int(r.stdout.strip().splitlines()[0])
+
+
+def gpu_has_room() -> bool:
+    used = gpu_used_mib()
+    if used + JOB_MIB > GPU_BUDGET_MIB:
+        log(f"GPU budget: {used} MiB in use + {JOB_MIB} job > {GPU_BUDGET_MIB} MiB limit; skipping this step")
+        return False
+    return True
 
 
 def log(msg: str) -> None:
@@ -71,6 +87,8 @@ def sft_row(sc: dict) -> dict:
 
 
 def evaluate(adapter: str, heldout_path: Path) -> dict:
+    if not gpu_has_room():
+        raise RuntimeError("GPU budget exceeded")
     r = subprocess.run([PY, str(ROOT / "selfloop" / "eval_adapter.py"), "--adapter", adapter,
                         "--data", str(heldout_path)], capture_output=True, text=True)
     for line in r.stdout.splitlines():
@@ -80,6 +98,8 @@ def evaluate(adapter: str, heldout_path: Path) -> dict:
 
 
 def train(train_path: Path, out: Path, epochs: float) -> bool:
+    if not gpu_has_room():
+        return False
     r = subprocess.run([PY, str(ROOT / "selfloop" / "train_qlora.py"), "--data", str(train_path),
                         "--out", str(out), "--epochs", str(epochs)], capture_output=True, text=True)
     if r.returncode != 0:

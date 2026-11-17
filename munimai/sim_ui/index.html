@@ -133,6 +133,18 @@ details summary{cursor:pointer;font:600 16px var(--font-d);margin-bottom:8px}
 .primary{background:var(--teal);color:#fff;border:0;border-radius:999px;padding:12px 24px;font-weight:600;min-height:46px}
 .primary:hover{background:var(--teal-d)}
 .ghost{background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:12px 20px;min-height:46px}
+.dlg select{width:100%;border:1.5px solid var(--line);border-radius:var(--r-md);padding:12px 14px;background:var(--paper)}
+.dlg{max-height:92dvh;overflow-y:auto}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sm{padding:10px 16px;min-height:44px;font-size:14px}
+.doc{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.doc:last-child{border:0}.doc input{accent-color:var(--teal);width:18px;height:18px;margin-top:3px;flex:none}
+.doc small{display:block;color:var(--ink-2);font-size:12.5px;overflow-wrap:anywhere}
+.chip{display:inline-flex;align-items:center;gap:8px;background:var(--teal-soft);color:var(--teal-d);border-radius:999px;padding:8px 14px;font-weight:500;text-decoration:none;min-height:40px}
+.chip:hover{background:var(--wash)}
+.save{display:flex;gap:6px;margin-top:8px}
+.save button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:12.5px;min-height:32px;color:var(--ink-2)}
+.save button:hover{border-color:var(--teal);color:var(--teal-d)}
 .drop{position:absolute;inset:10px;display:none;place-items:center;text-align:center;z-index:5;background:#F2F7F6EE;border:2.5px dashed var(--teal);border-radius:var(--r-lg);font:600 20px var(--font-d)}
 .drop.on{display:grid}.drop small{display:block;font:400 14px var(--font-b);color:var(--ink-2);margin-top:6px}
 
@@ -178,12 +190,33 @@ details summary{cursor:pointer;font:600 16px var(--font-d);margin-bottom:8px}
   <aside class="side" id="side">
     <section><h2>This turn</h2><ol class="steps" id="steps"><li><span class="tick"></span>Waiting for your question</li></ol></section>
     <section><h2>Your books</h2><div id="books"><p class="empty">Nothing here yet. Send a bill to add it.</p></div></section>
+    <section><h2>Documents</h2>
+      <div id="docs"><p class="empty">Upload a certificate, ID or bank statement and it appears here.</p></div>
+      <div class="acts">
+        <button class="primary sm" id="bankBtn">Download bank file (PDF)</button>
+        <button class="ghost sm" id="appBtn">Loan application</button>
+      </div>
+      <p class="empty" style="margin-top:8px">Tick a document to attach its original to the bank file. ID numbers are masked everywhere else.</p>
+    </section>
     <section><h2>Assistant</h2><div class="sys">
       <div><span class="dot" id="dBoss"></span>Main model <span id="tBoss" class="empty"></span></div>
       <div><span class="dot" id="dWork"></span>Helper model <span id="tWork" class="empty"></span></div></div></section>
     <details><summary>Agent trace</summary><div id="trace"><p class="empty">Appears after your first question.</p></div></details>
   </aside>
 </div>
+
+<div class="scrim" id="appDlg" role="dialog" aria-modal="true" aria-labelledby="appH"><form class="dlg" id="appForm">
+  <h2 id="appH">Loan application</h2><p>I will draft the covering letter, the application and a document checklist. Nothing is submitted.</p>
+  <label for="aBank">Bank</label><select id="aBank"></select>
+  <label for="aScheme">Scheme</label><select id="aScheme"></select>
+  <label for="aAmt">Amount (Rs)</label><input id="aAmt" inputmode="numeric" required placeholder="300000">
+  <label for="aPur">What is the loan for?</label><input id="aPur" maxlength="300" required placeholder="Buy two sewing machines and cloth stock">
+  <label for="aTen">Months to repay</label><input id="aTen" inputmode="numeric" value="36">
+  <label for="aPhone">Mobile (optional)</label><input id="aPhone" inputmode="tel" maxlength="20">
+  <label for="aAddr">Business address (optional)</label><input id="aAddr" maxlength="200">
+  <div class="hint" id="aErr" style="color:var(--alert)"></div>
+  <div class="row"><button type="button" class="ghost" id="aCancel">Cancel</button><button class="primary" id="aGo">Draft it</button></div>
+</form></div>
 
 <div class="scrim" id="setup" role="dialog" aria-modal="true" aria-labelledby="setupH"><form class="dlg" id="setupForm">
   <h2 id="setupH"></h2><p id="setupP"></p>
@@ -265,7 +298,7 @@ function stepsEnd(){if(curStep){const now=performance.now();curStep.li.className
 
 /* ---------- the live turn: stream events as they happen ---------- */
 async function turn({text,blob,userBubble}){
-  stopSpeaking();if(ctl)ctl.abort();ctl=new AbortController();stepsReset();setState('thinking');
+  stopSpeaking();if(ctl)ctl.abort();ctl=new AbortController();stepsReset();setState('thinking');curQ=text||'';
   const fd=new FormData();fd.append('language',blob?lang:'auto');fd.append('speak','1');if(blob)fd.append('file',blob,'voice.webm');else fd.append('text',text);
   let replyBubble=null,gotReply=false;
   const wait=add('them','<span class="live"><span class="dots"><i></i><i></i><i></i></span></span>');
@@ -279,11 +312,13 @@ async function turn({text,blob,userBubble}){
         const ev=/^event: (.*)$/m.exec(blk),da=/^data: (.*)$/m.exec(blk);if(!ev||!da)continue;
         const d=JSON.parse(da[1]);
         if(ev[1]==='stage'){stepNow(d.id,d.label);if(d.id==='speaking')setState('thinking');}
-        else if(ev[1]==='heard'){if(userBubble)userBubble.insertAdjacentHTML('beforeend','<div class="heard">“'+esc(d.text)+'”</div>');}
+        else if(ev[1]==='heard'){curQ=d.text;if(userBubble)userBubble.insertAdjacentHTML('beforeend','<div class="heard">“'+esc(d.text)+'”</div>');}
         else if(ev[1]==='reply'){gotReply=true;wait.parentElement.remove();replyBubble=showReply(d);}
         else if(ev[1]==='clip'){enqueue(d.b64);}
         else if(ev[1]==='fail'){wait.parentElement&&wait.parentElement.remove();add('them','<span class="err">'+esc(d.message)+'</span>');}
         else if(ev[1]==='start'){loadTrace.id=d.trace_id;}
+        else if(ev[1]==='file'){addFile(d);}
+        else if(ev[1]==='action'){if(d.name==='open_application')openApp();}
       }
     }
     stepsEnd();clipsDone=true;
@@ -309,6 +344,9 @@ function showReply(d){
     if(k<words.length)setTimeout(tick,step*2);else{
       if(tail)el.insertAdjacentHTML('beforeend','<div class="src">'+esc(tail)+'</div>');
       if(d.language!=='en'&&d.text_en)el.insertAdjacentHTML('beforeend','<div class="en">English: '+esc(d.text_en.split('(Sources:')[0].trim())+'</div>');
+      if(body.length>60){const q=curQ,bar=document.createElement('div');bar.className='save';
+        bar.innerHTML='<button type="button" data-f="pdf">Save as PDF</button><button type="button" data-f="png">Save as image</button>';
+        bar.querySelectorAll('button').forEach(b=>b.onclick=()=>exportAnswer(b.dataset.f,q,d));el.appendChild(bar);}
       feed.scrollTop=feed.scrollHeight;}};
   tick();el.dataset.body=body;return el;
 }
@@ -405,7 +443,7 @@ async function handleFile(f){
   const fd=new FormData();fd.append('file',f,f.name);
   try{
     const d=await (await fetch('/sim/image',{method:'POST',body:fd,headers:H})).json();
-    stepsEnd();w.parentElement.remove();add('them',esc(d.reply));if(d.trace_id)loadTrace(d.trace_id);loadBooks();
+    stepsEnd();w.parentElement.remove();add('them',esc(d.reply));if(d.trace_id)loadTrace(d.trace_id);loadBooks();loadDocs();
   }catch(e){w.parentElement.remove();add('them','<span class="err">I could not upload that file. Check your connection and try again.</span>');}
 }
 const drop=$('drop');let depth=0;
@@ -431,6 +469,41 @@ async function loadStatus(){
 }
 $('sideBtn').onclick=()=>$('side').classList.toggle('open');
 
+/* ---------- files, documents, bank file, loan application ---------- */
+let curQ='';
+function addFile(f){add('them','<a class="chip" href="'+esc(f.url)+'" download="'+esc(f.name)+'"><i data-lucide="download"></i>'+esc(f.name)+'</a>');}
+async function exportAnswer(fmt,q,d){
+  try{const r=await (await fetch('/sim/export',{method:'POST',headers:{...H,'Content-Type':'application/json'},
+    body:JSON.stringify({fmt,question:q,reply:d.text,reply_en:d.text_en||'',language:d.language})})).json();addFile(r);}
+  catch{add('them','<span class="err">I could not create that file. Please try again.</span>');}
+}
+const KIND={invoice:'Bill',udyam_certificate:'Udyam certificate',gst_certificate:'GST certificate',id_proof:'ID proof',bank_statement:'Bank statement',other:'Other'};
+async function loadDocs(){
+  try{const d=await (await fetch('/sim/documents',{headers:H})).json();
+    const sel=(id,arr)=>{const s=$(id);if(!s.options.length)s.innerHTML=arr.map(x=>'<option>'+esc(x)+'</option>').join('');};sel('aBank',d.banks);sel('aScheme',d.schemes);
+    $('docs').innerHTML=d.documents.length?d.documents.map(x=>'<label class="doc"><input type="checkbox" data-id="'+x.id+'"'+(x.include?' checked':'')+'><span>'+esc(x.filename)
+      +'<small>'+esc(KIND[x.kind]||x.kind)+(x.summary?' · '+esc(x.summary):'')+'</small></span></label>').join('')
+      :'<p class="empty">Upload a certificate, ID or bank statement and it appears here.</p>';
+    $('docs').querySelectorAll('input').forEach(c=>c.onchange=()=>fetch('/sim/documents/'+c.dataset.id+'/include',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({include:c.checked})}));
+  }catch{}
+}
+$('bankBtn').onclick=async()=>{
+  const b=$('bankBtn');b.disabled=true;b.textContent='Preparing…';
+  try{const r=await (await fetch('/sim/dossier',{method:'POST',headers:H})).json();addFile(r);}
+  catch{add('them','<span class="err">I could not build the bank file. Please try again.</span>');}
+  b.disabled=false;b.textContent='Download bank file (PDF)';
+};
+function openApp(){$('aErr').textContent='';$('appDlg').classList.add('on');$('aAmt').focus();}
+$('appBtn').onclick=openApp;$('aCancel').onclick=()=>$('appDlg').classList.remove('on');
+$('appForm').onsubmit=async e=>{
+  e.preventDefault();const go=$('aGo');go.disabled=true;go.textContent='Drafting…';$('aErr').textContent='';
+  try{const r=await (await fetch('/sim/application',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({
+    bank:$('aBank').value,scheme:$('aScheme').value,amount:$('aAmt').value,purpose:$('aPur').value,tenure:$('aTen').value,phone:$('aPhone').value,address:$('aAddr').value,language:lang})})).json();
+    if(r.error){$('aErr').textContent=r.error;}else{$('appDlg').classList.remove('on');add('them','Your loan application draft is ready. Review it, fill the blanks and sign it. Nothing has been submitted.');addFile(r);}
+  }catch{$('aErr').textContent='Something went wrong. Please try again.';}
+  go.disabled=false;go.textContent='Draft it';
+};
+
 /* ---------- business profile (first run) ---------- */
 async function loadProfile(){
   try{const p=await (await fetch('/sim/profile',{headers:H})).json();$('bizName').textContent=p.name;
@@ -442,7 +515,7 @@ $('setupForm').onsubmit=async e=>{e.preventDefault();
   const r=await (await fetch('/sim/profile',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({name:$('bName').value,gstin:$('bGst').value})})).json();
   if(r.name){$('bizName').textContent=r.name;$('setup').classList.remove('on');}};
 
-setLang(lang);setState('idle');icons();loadStatus();loadBooks();loadProfile();setInterval(loadStatus,20000);
+setLang(lang);setState('idle');icons();loadStatus();loadBooks();loadDocs();loadProfile();setInterval(loadStatus,20000);
 </script>
 </body>
 </html>

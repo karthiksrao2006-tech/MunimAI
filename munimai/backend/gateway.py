@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -33,6 +34,11 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from .agents.ledger import LedgerAgent
 from .agents.scheme import SchemeAgent
 from .agents.verifier import Verifier
+from . import docstore
+from . import export as _export
+from .agents import general as _general
+from .agents.application import BANKS, SCHEMES, AppRequest, ApplicationAgent
+from .agents.dossier import _KIND_LABEL, DossierAgent
 from .router import CANNED, classify
 from .bhashini_client import BhashiniClient, BhashiniConfigError
 from .config import DBSettings, LLMSettings, WhatsAppSettings
@@ -77,6 +83,26 @@ def _to_wav(audio: bytes) -> bytes:
 
 def _get_conn() -> psycopg.Connection:
     return psycopg.connect(_db.conninfo)
+
+
+try:
+    with psycopg.connect(_db.conninfo) as _c:
+        docstore.ensure_table(_c)
+except Exception:  # the app still starts; document features report the error when used
+    pass
+
+_FILES: dict[str, tuple[bytes, str, str]] = {}   # token -> (bytes, filename, mime)
+_LAST: dict[str, dict] = {}                      # browser id -> last turn, for "save this as a PDF"
+
+
+def _stash(data: bytes, name: str, mime: str) -> str:
+    import uuid as _uuid
+
+    tok = _uuid.uuid4().hex
+    _FILES[tok] = (data, name, mime)
+    while len(_FILES) > 40:
+        _FILES.pop(next(iter(_FILES)))
+    return tok
 
 
 def _get_or_create_business(conn: psycopg.Connection, wa_number: str) -> int:
@@ -264,7 +290,12 @@ def _handle_question(question: str, business_id: int,
     trace.emit("router", "route", {"intent": intent})
     if intent in CANNED:
         return CANNED[intent]
-    # eligibility, or unknown fallback -> scheme
+    if intent != "eligibility":
+        trace.emit("router", "route", {"to": "general"})
+        text, source = _general.answer(conn, business_id, question, _llm,
+                                       has_docs=docstore.has_documents(conn, business_id), trace=trace)
+        trace.emit("router", "tool_result", {"answer_source": source}, tool_name="general")
+        return text
     trace.emit("router", "route", {"to": "scheme"})
     answer, claim = SchemeAgent(conn, _llm).answer(business_id, question, trace=trace)
     verdict = Verifier(conn).check(claim)
@@ -398,6 +429,19 @@ async def sim_text(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict
         conn.close()
 
 
+def _summarize_doc(doc_id: int, text: str) -> None:
+    """Background Gemma-worker job: a two-sentence summary of an upload."""
+    try:
+        r = _ledger_llm.chat([
+            {"role": "system", "content": "Summarise this document in at most two short sentences. "
+             "Say what kind of document it is and its key facts. Do not invent anything."},
+            {"role": "user", "content": text[:1500]}], max_tokens=90)
+        with psycopg.connect(_db.conninfo) as c:
+            docstore.set_summary(c, doc_id, r.text.strip())
+    except Exception:
+        pass
+
+
 def _pdf_text(path: str, max_pages: int = 3) -> str:
     """Digital PDFs carry a text layer (exact, free). Scanned ones don't, so
     render each page to PNG and send it through the same OCR as a photo."""
@@ -437,11 +481,25 @@ async def sim_image(file: UploadFile = File(...), x_munim_id: Optional[str] = He
         try:
             trace.emit("router", "route", {"to": "ledger"})
             text = _pdf_text(tmp) if tmp.lower().endswith(".pdf") else _ocr.read(tmp)
+            doc = None
             if text.strip():
+                doc = docstore.save_upload(conn, bid, file.filename or "upload", Path(tmp).read_bytes(), text)
+                threading.Thread(target=_summarize_doc, args=(doc["id"], text), daemon=True).start()
+                trace.emit("router", "tool_result", {"saved_as": doc["kind"], "facts": list(doc["facts"])},
+                           tool_name="docstore")
+            if text.strip() and doc and doc["kind"] != "invoice":
+                label = _KIND_LABEL.get(doc["kind"], "document")
+                found = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in doc["facts"].items())
+                reply = (f"Saved as: {label}." + (f" I found {found}." if found else "")
+                         + " You can now ask me questions about it, and tick it in the Documents list if "
+                           "you want it in your bank file.")
+            elif text.strip():
                 send_seed("bill", text, "en")
             if not text.strip():
                 reply = ("I couldn't read any text from that photo. "
                          "Could you retake it with better light, closer and flat?")
+            elif doc and doc["kind"] != "invoice":
+                pass
             else:
                 entry = LedgerAgent(conn, _ledger_llm).from_text(
                     bid, text, source="bill_photo", source_media_id="sim",
@@ -497,6 +555,42 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _special(intent: str, text_en: str, bid: int, conn: psycopg.Connection, trace: Trace,
+             lang: str, munim_id: Optional[str]):
+    """Deliverables: the bank file, the application form prompt, answer export."""
+    file_ev = None
+    if intent == "dossier":
+        yield _sse("stage", {"id": "dossier", "label": "Preparing your bank file"})
+        pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
+        tok = _stash(pdf, "MunimAI-bank-file.pdf", "application/pdf")
+        msg = ("Your bank file is ready. It has your books, GST summary, the proofs on file and what is still "
+               "missing. Please review it before you share it. Tick the documents you want attached in the Documents list.")
+        file_ev = {"url": f"/sim/file/{tok}", "name": "MunimAI-bank-file.pdf"}
+    elif intent == "application":
+        msg = ("I can draft the covering letter and loan application for your bank. Use the Loan application "
+               "button to choose the bank, scheme, amount and purpose.")
+        yield _sse("action", {"name": "open_application"})
+    else:
+        last = _LAST.get((munim_id or "")[:64])
+        if not last:
+            msg = "Ask me something first, then I can save the answer as a PDF or an image."
+        else:
+            png = any(w in text_en.lower() for w in ("image", "png", "picture", "jpeg"))
+            fn = _export.reply_png if png else _export.reply_pdf
+            data = fn(last["q"], last["reply"], last["reply_en"], last["lang"])
+            name = "MunimAI-answer." + ("png" if png else "pdf")
+            file_ev = {"url": f"/sim/file/{_stash(data, name, 'image/png' if png else 'application/pdf')}", "name": name}
+            msg = "Here is your answer " + ("as an image." if png else "as a PDF.")
+    try:
+        text = localize_reply(_bhashini, msg, lang)
+    except Exception:
+        text = msg
+    trace.emit("router", "message_out", {"reply": text[:300], "language": lang})
+    yield _sse("reply", {"text": text, "text_en": msg, "language": lang})
+    if file_ev:
+        yield _sse("file", file_ev)
+
+
 def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[str]):
     """One live turn as a stream of events: each pipeline stage is announced the
     moment it starts, the reply arrives as soon as it is ready, and spoken audio
@@ -535,6 +629,10 @@ def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[
             trace.emit("router", "tool_result", {"language": lang, "understood": text_en[:200]}, tool_name="bhashini.translate")
         yield _sse("understood", {"text": text_en, "language": lang})
         send_seed("question", text_en, lang)
+        intent = classify(text_en)
+        if intent in ("dossier", "application", "export"):
+            yield from _special(intent, text_en, bid, conn, trace, lang, munim_id)
+            yield _sse("done", {}); return
         yield _sse("stage", {"id": "thinking", "label": "Checking the official rules"})
         reply_en = _handle_question(text_en, bid, conn, trace)
         reply = reply_en
@@ -546,6 +644,7 @@ def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[
                 trace.emit("router", "error", {"stage": "translate_out", "error": str(exc)})
                 reply, lang = reply_en, "en"
         trace.emit("router", "message_out", {"reply": reply[:300], "language": lang})
+        _LAST[(munim_id or "")[:64]] = {"q": text, "reply": reply, "reply_en": reply_en, "lang": lang}
         yield _sse("reply", {"text": reply, "text_en": reply_en, "language": lang})
         if speak and lang in ("hi", "kn"):
             yield _sse("stage", {"id": "speaking", "label": "Preparing the voice"})
@@ -575,6 +674,86 @@ async def sim_chat(
         gen = _chat_stream("text", text.strip(), language, speak == "1", x_munim_id)
     return StreamingResponse(gen, media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/sim/documents")
+def sim_documents(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        return {"documents": docstore.list_docs(conn, bid),
+                "banks": BANKS, "schemes": SCHEMES}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/documents/{doc_id}/include")
+def sim_doc_include(doc_id: int, body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id)
+        docstore.set_include(conn, bid, doc_id, bool(body.get("include")))
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/dossier")
+def sim_dossier(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        trace = Trace(business_id=bid); trace.attach_db(conn)
+        pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
+        return {"url": f"/sim/file/{_stash(pdf, 'MunimAI-bank-file.pdf', 'application/pdf')}",
+                "name": "MunimAI-bank-file.pdf"}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/application")
+def sim_application(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
+    try:
+        req = AppRequest(
+            bank=str(body.get("bank") or "Other bank")[:80], scheme=str(body.get("scheme") or "Other")[:80],
+            amount_rupees=max(1000, int(float(body.get("amount") or 0))), purpose=str(body.get("purpose") or "").strip()[:400],
+            tenure_months=max(6, min(120, int(body.get("tenure") or 36))),
+            phone=str(body.get("phone") or "")[:20], address=str(body.get("address") or "")[:200])
+    except (TypeError, ValueError):
+        return {"error": "Enter the amount as a number."}
+    if not req.purpose:
+        return {"error": "Say what the loan is for."}
+    lang = body.get("language", "en")
+    tr = (lambda x: _bhashini.translate(x, "en", lang)) if (_bhashini and lang in ("hi", "kn")) else None
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        trace = Trace(business_id=bid); trace.attach_db(conn)
+        pdf = ApplicationAgent(conn, _llm, tr).build(bid, req, trace=trace)
+        name = "MunimAI-loan-application.pdf"
+        return {"url": f"/sim/file/{_stash(pdf, name, 'application/pdf')}", "name": name}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/export")
+def sim_export(body: dict) -> dict:
+    fmt = "png" if body.get("fmt") == "png" else "pdf"
+    fn = _export.reply_png if fmt == "png" else _export.reply_pdf
+    data = fn(str(body.get("question", ""))[:600], str(body.get("reply", ""))[:6000],
+              str(body.get("reply_en", ""))[:6000], str(body.get("language", "en")))
+    name = f"MunimAI-answer.{fmt}"
+    return {"url": f"/sim/file/{_stash(data, name, 'image/png' if fmt == 'png' else 'application/pdf')}", "name": name}
+
+
+@app.get("/sim/file/{token}")
+def sim_file(token: str):
+    item = _FILES.get(token)
+    if not item:
+        return JSONResponse({"error": "This file has expired. Create it again."}, status_code=404)
+    data, name, mime = item
+    return Response(content=data, media_type=mime,
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @app.get("/sim/trace/{trace_id}")

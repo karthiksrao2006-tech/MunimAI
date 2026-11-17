@@ -16,3 +16,38 @@ Note: WebFetch got HTTP 403 from mudra.org.in; the pages were retrieved with cur
 
 ## Not attempted
 - jansamarth.in, msme.gov.in, india.gov.in, rbi.org.in: not fetched; no RBI circular verified.
+
+---
+# Multi-scheme KB (added 2026-11-17)
+
+Produced by `python -m backend.kb.fetch` then `python -m backend.kb.loader`. Clause text is verbatim page/PDF text,
+split by heading (HTML) or by page and sentence groups (PDF); no model writes or paraphrases clauses. A re-fetch retires
+older clauses of the same URL (`superseded_at`), never deletes them. One JSON file per scheme in this folder.
+
+## Loaded (verified reachable with real content)
+| scheme_code | clauses | sources |
+|---|---|---|
+| PMEGP | 46 | pmegp.msme.gov.in /Home/FAQ, /Home/TermsAndConditions, /Home/HomePage |
+| CGTMSE | 168 | www.cgtmse.in home, /Home/VS/71 (FAQ), CGS-I Scheme Document PDF (updated 1 Apr 2025, first 30 pages) |
+| PM_SVANIDHI | 7 | pmsvanidhi.mohua.gov.in |
+| STANDUP_INDIA | 3 | www.standupmitra.in (success stories excluded) |
+| PM_VISHWAKARMA | 12 | pmvishwakarma.gov.in |
+| NSIC | 42 | www.nsic.co.in /Schemes/SinglePointRegistration, /RawMaterialAgainstBG, /MSMESaarthi |
+| SIDBI | 21 | www.sidbi.in /en/working-capital, /en/machinery-loan, /en/business-loan |
+| STARTUP_INDIA | 44 | startupindia.gov.in startup-scheme page; DPIIT recognition and tax-exemption page |
+| SISFS | 41 | Startup India Seed Fund Scheme guidelines PDF (startupindia.gov.in) |
+| STARTUP_PLAYBOOK | 91 | Startup Schemes Playbook, June 2026 PDF (startupindia.gov.in): Fund of Funds, central startup schemes |
+
+## Gaps (not loaded, not guessed)
+- **PMEGP subsidy-rate table (rural/urban %, own contribution):** not present in the reachable pmegp.msme.gov.in pages; it is on kviconline.gov.in, unreachable from here (connection fails from laptop and lab server).
+- **CLCSS / SCLCSS / MSE-CDP and other MSME Ministry schemes:** msme.gov.in /schemes is JavaScript-rendered (0 clauses); dcmsme.gov.in, sclcss.msme.gov.in, my.msme.gov.in unreachable; scheme booklet PDFs on msme.gov.in return 404.
+- **Udyam registration benefits:** udyamregistration.gov.in returns only a landing stub (1.7 KB, no scheme text).
+- **Jan Samarth:** jansamarth.in is JavaScript-rendered (1 boilerplate line).
+- **NIDHI (DST):** nidhi.dst.gov.in unreachable. Only what the Startup Playbook says about it is covered.
+- **Karnataka startup/MSME schemes:** startup.karnataka.gov.in unreachable; ksfc.karnataka.gov.in pages are circular indexes (no rules text).
+- **PM SVANidhi, Stand-Up India:** pages are thin (7 and 3 clauses); detailed guidelines PDFs not fetched.
+- **kviconline.gov.in PMEGP guideline PDFs:** unreachable.
+
+## Allowlist additions (backend/config.py)
+pmegp.msme.gov.in, pmsvanidhi.mohua.gov.in, pmvishwakarma.gov.in, www.standupmitra.in (SIDBI-run for Dept of Financial Services),
+www.nsic.co.in / nsic.co.in (Govt of India PSU), www.sidbi.in / sidbi.in, www.startupindia.gov.in / startupindia.gov.in.

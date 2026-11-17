@@ -39,6 +39,17 @@ CITATION_ALLOWLIST: frozenset[str] = frozenset(
         "www.india.gov.in",
         "rbi.org.in",
         "www.rbi.org.in",
+        # added for the multi-scheme KB; each verified live and content-bearing
+        "pmegp.msme.gov.in",            # Ministry of MSME PMEGP portal
+        "pmsvanidhi.mohua.gov.in",      # Ministry of Housing and Urban Affairs
+        "pmvishwakarma.gov.in",         # Government of India scheme portal
+        "www.standupmitra.in",          # Stand-Up India, SIDBI for Dept of Financial Services
+        "www.nsic.co.in",               # National Small Industries Corp (Govt PSU, MSME)
+        "nsic.co.in",
+        "www.sidbi.in",                 # Small Industries Development Bank of India
+        "sidbi.in",
+        "www.startupindia.gov.in",      # DPIIT, Startup India
+        "startupindia.gov.in",
     }
 )
 
