@@ -37,7 +37,9 @@ from .bhashini_client import BhashiniClient, BhashiniConfigError
 from .config import DBSettings, LLMSettings, WhatsAppSettings
 from .llm import LLM
 from .ocr import RemoteEasyOCR
+from .seeds import send_seed
 from .trace import Trace
+from .voice import detect_language, localize_reply, speak_clips, to_english
 from .whatsapp import InboundMessage, WhatsAppClient
 
 app = FastAPI(title="MunimAI WhatsApp Gateway")
@@ -226,6 +228,35 @@ def _handle_bill_photo(msg: InboundMessage, business_id: int,
         Path(tmp_path).unlink(missing_ok=True)
 
 
+def _converse(text: str, lang: str, bid: int, conn: psycopg.Connection,
+              trace: Trace, speak: bool) -> dict:
+    """Any language in -> English reasoning -> same language out (+ speech)."""
+    if lang == "auto":
+        lang = detect_language(text)
+    note = None
+    try:
+        text_en = to_english(_bhashini, text, lang)
+    except Exception as exc:  # translation outage: degrade, don't fail the chat
+        trace.emit("router", "error", {"stage": "translate_in", "error": str(exc)})
+        text_en, lang, note = text, "en", "Translation is unavailable right now, so I'm answering in English."
+    if lang != "en":
+        trace.emit("router", "tool_result", {"language": lang, "understood": text_en[:200]},
+                   tool_name="bhashini.translate")
+    send_seed("question", text_en, lang)
+    reply_en = _handle_question(text_en, bid, conn, trace)
+    try:
+        reply = localize_reply(_bhashini, reply_en, lang)
+        clips = speak_clips(_bhashini, reply, lang) if speak else []
+    except Exception as exc:
+        trace.emit("router", "error", {"stage": "translate_out", "error": str(exc)})
+        reply, clips, note = reply_en, [], "I couldn't translate the reply, so here it is in English."
+    if note:
+        reply = f"{note}\n\n{reply}"
+    trace.emit("router", "message_out", {"reply": reply[:300], "language": lang})
+    return {"reply": reply, "reply_en": reply_en, "language": lang,
+            "understood": text_en, "audio": clips, "trace_id": str(trace.trace_id)}
+
+
 def _handle_question(question: str, business_id: int,
                      conn: psycopg.Connection, trace: Trace) -> str:
     intent = classify(question)
@@ -312,7 +343,7 @@ def sim_books() -> dict:
 
 @app.post("/sim/text")
 async def sim_text(body: dict) -> dict:
-    """Simulated text message in, agent reply out."""
+    """Text in any supported language; reply in the same language."""
     text = (body.get("text") or "").strip()
     if not text:
         return {"reply": "(empty message)"}
@@ -321,9 +352,8 @@ async def sim_text(body: dict) -> dict:
         bid = _sim_business(conn); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         trace.emit("router", "message_in", {"type": "text", "from": "sim"})
-        reply = _handle_question(text, bid, conn, trace)
-        trace.emit("router", "message_out", {"reply": reply[:300]})
-        return {"reply": reply, "trace_id": str(trace.trace_id)}
+        return _converse(text, body.get("language", "auto"), bid, conn, trace,
+                         bool(body.get("speak")))
     finally:
         conn.close()
 
@@ -367,6 +397,8 @@ async def sim_image(file: UploadFile = File(...)) -> dict:
         try:
             trace.emit("router", "route", {"to": "ledger"})
             text = _pdf_text(tmp) if tmp.lower().endswith(".pdf") else _ocr.read(tmp)
+            if text.strip():
+                send_seed("bill", text, "en")
             if not text.strip():
                 reply = ("I couldn't read any text from that photo. "
                          "Could you retake it with better light, closer and flat?")
@@ -396,29 +428,26 @@ async def sim_image(file: UploadFile = File(...)) -> dict:
 async def sim_voice(
     file: UploadFile = File(...), language: str = Form("hi"),
 ) -> dict:
-    """Simulated voice note. Bhashini ASR -> same text path as /sim/text."""
+    """Voice note: Bhashini ASR -> English reasoning -> reply translated back
+    and spoken in the same language."""
     if _bhashini is None:
         return {"reply": "Bhashini isn't configured; voice messages aren't available."}
     conn = _get_conn()
     try:
         bid = _sim_business(conn); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
-        trace.emit("router", "message_in", {"type": "audio", "from": "sim"})
+        trace.emit("router", "message_in", {"type": "audio", "from": "sim", "language": language})
         audio_bytes = await file.read()
-        trace.emit("router", "tool_call", {"bytes": len(audio_bytes)},
-                   tool_name="bhashini.asr")
+        trace.emit("router", "tool_call", {"bytes": len(audio_bytes)}, tool_name="bhashini.asr")
         try:
             text = _bhashini.speech_to_text(_to_wav(audio_bytes), language=language)  # type: ignore[arg-type]
         except Exception as exc:
             trace.emit("router", "error", {"stage": "asr", "error": str(exc)})
-            return {"reply": f"Could not transcribe: {exc}",
-                    "trace_id": str(trace.trace_id)}
-        trace.emit("router", "tool_result",
-                   {"transcript": text[:200]}, tool_name="bhashini.asr")
-        reply = _handle_question(text, bid, conn, trace)
-        trace.emit("router", "message_out", {"reply": reply[:300]})
-        return {"reply": reply, "transcript": text,
-                "trace_id": str(trace.trace_id)}
+            return {"reply": f"Could not transcribe: {exc}", "trace_id": str(trace.trace_id)}
+        trace.emit("router", "tool_result", {"transcript": text[:200]}, tool_name="bhashini.asr")
+        out = _converse(text, language, bid, conn, trace, speak=True)
+        out["transcript"] = text
+        return out
     finally:
         conn.close()
 

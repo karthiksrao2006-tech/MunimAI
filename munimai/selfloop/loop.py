@@ -17,19 +17,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
-from selfloop import gen
+from selfloop import gen, inbox
 from selfloop.common import SYSTEM_PROMPT, is_heldout, load_jsonl, user_prompt
 
 ROOT = Path(__file__).resolve().parent.parent          # ~/munimai
 WORK = ROOT / "selfloop_data"
 SCEN = WORK / "scenarios.jsonl"
+SEEDS = WORK / "seeds.jsonl"
 STATE = WORK / "state.json"
 LOG = WORK / "loop.log"
 PY = sys.executable
@@ -99,6 +102,11 @@ def main() -> None:
 
     WORK.mkdir(parents=True, exist_ok=True)
     (WORK / "ckpt").mkdir(exist_ok=True)
+    wake = threading.Event()
+    token = os.environ.get("SEED_TOKEN", "")
+    if token:
+        inbox.start(SEEDS, token, wake)
+        log("seed inbox listening on :8091")
     deadline = time.time() + a.max_hours * 3600
     state = load_state()
     log(f"loop start target={a.target} best={state['best_adapter']} score={state['best_score']}")
@@ -110,14 +118,16 @@ def main() -> None:
         got = 0
         while got < a.gen_per_cycle and time.time() < deadline:
             try:
-                batch = gen.generate(8)
+                seeds = load_jsonl(SEEDS)
+                recent = random.sample(seeds[-30:], min(3, len(seeds))) if seeds else None
+                batch = gen.generate(8, recent)
             except Exception as exc:  # worker hiccup must not kill an unattended loop
                 log(f"gen error: {exc}"); time.sleep(20); continue
             append_scenarios(batch); got += len(batch)
         rows = load_jsonl(SCEN)
         train_rows = [r for r in rows if not is_heldout(r["id"])]
         held = [r for r in rows if is_heldout(r["id"])]
-        log(f"cycle {c}: +{got} scenarios, total={len(rows)} train={len(train_rows)} heldout={len(held)}")
+        log(f"cycle {c}: seeds={len(load_jsonl(SEEDS))} +{got} scenarios, total={len(rows)} train={len(train_rows)} heldout={len(held)}")
         if len(held) < a.min_heldout:
             save_state(state); continue
 
@@ -136,7 +146,7 @@ def main() -> None:
         if cur["score"] >= a.target:
             log(f"TARGET MET ({cur['score']:.3f} >= {a.target}); generating at low cadence")
             state["history"].append({"cycle": c, "score": cur["score"], "action": "target_met"})
-            save_state(state); time.sleep(a.idle_sleep); continue
+            save_state(state); wake.wait(a.idle_sleep); wake.clear(); continue
 
         cand = WORK / "ckpt" / f"cycle_{c}"
         if train(train_path, cand, a.epochs):

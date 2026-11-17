@@ -221,6 +221,42 @@ class BhashiniClient:
             ) from exc
         return base64.b64decode(audio_b64)
 
+    def translate(self, text: str, source: str, target: str) -> str:
+        """Translate between en/hi/kn with Bhashini (IndicTrans2). Verified live:
+        config call needs both sourceLanguage and targetLanguage; the compute
+        response is pipelineResponse[0].output[0].target."""
+        if source == target or not text.strip():
+            return text
+        for lang in (source, target):
+            if lang != "en":
+                self._check_language(lang)
+        lang_cfg = {"sourceLanguage": source, "targetLanguage": target}
+        cache_key = f"translation:{source}>{target}"
+        with self._cache_lock:
+            service_id = self._service_cache.get(cache_key)  # type: ignore[call-overload]
+        if not service_id:
+            data = self._post(
+                CONFIG_URL,
+                {"pipelineTasks": [{"taskType": "translation", "config": {"language": lang_cfg}}],
+                 "pipelineRequestConfig": {"pipelineId": self.pipeline_id}},
+                {"ulcaApiKey": self.udyat_key}, _CONFIG_TIMEOUT)
+            try:
+                service_id = data["pipelineResponseConfig"][0]["config"][0]["serviceId"]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise BhashiniAPIError(f"No translation service for {source}->{target}: {data!r}") from exc
+            with self._cache_lock:
+                self._service_cache[cache_key] = service_id  # type: ignore[index]
+        data = self._post(
+            COMPUTE_URL,
+            {"pipelineTasks": [{"taskType": "translation",
+                                "config": {"language": lang_cfg, "serviceId": service_id}}],
+             "inputData": {"input": [{"source": text}]}},
+            {"Authorization": self.inference_key}, _COMPUTE_TIMEOUT)
+        try:
+            return data["pipelineResponse"][0]["output"][0]["target"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise BhashiniAPIError(f"Unexpected translation response: {data!r}") from exc
+
     def get_service_id(self, task: TaskType, language: LanguageCode) -> str:
         """
         Resolve (and cache) the serviceId for a task + language.
