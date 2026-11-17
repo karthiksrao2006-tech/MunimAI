@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MunimAI Chat</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#0A0C10; --panel:#111B21; --header:#202C33; --tx:#E9EDEF;
+  --tx2:#8696A0; --me:#005C4B; --them:#202C33; --accent:#00A884;
+  --card:#0F171C; --line:#2A3942; --warn:#F15C6D;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+  font-family:'Inter',system-ui,sans-serif;font-size:14.5px;
+  height:100%;overflow:hidden}
+.app{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr auto;
+  height:100dvh;max-width:480px;margin:0 auto;background:var(--panel);
+  position:relative;overflow:hidden}
+@media(min-width:900px){
+  body{display:grid;grid-template-columns:480px 1fr;gap:0}
+  .app{height:100dvh}
+  .glass{display:flex}
+}
+/* --- header --- */
+header.chat{background:var(--header);padding:12px 16px;display:flex;
+  gap:12px;align-items:center;border-bottom:1px solid var(--line)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Space Grotesk',sans-serif;font-weight:600;color:#0A0C10}
+.who{flex:1;min-width:0}
+.who h1{font-size:15px;font-weight:600;margin:0;line-height:1.1}
+.who p{font-size:12.5px;color:var(--tx2);margin:2px 0 0}
+/* --- messages --- */
+.scroll{overflow-y:auto;padding:16px 10px 8px;background-color:var(--bg);
+  background-image:radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size:14px 14px;scroll-behavior:smooth}
+.row{display:flex;margin:4px 0;align-items:flex-end;gap:6px}
+.row.me{justify-content:flex-end}
+.bubble{max-width:82%;padding:7px 10px 5px;border-radius:9px;
+  line-height:1.38;white-space:pre-wrap;word-wrap:break-word;
+  font-size:14.2px;position:relative}
+.me .bubble{background:var(--me)}
+.them .bubble{background:var(--them)}
+.time{font-size:10.5px;color:var(--tx2);margin-left:6px;float:right;
+  padding-top:4px}
+.me .time{color:#8DD0C0}
+.bubble img{display:block;max-width:100%;border-radius:6px;margin:0 0 4px}
+.bubble audio{display:block;width:100%;margin:0 0 4px;filter:invert(0.85) hue-rotate(180deg)}
+.bubble.citation{border-left:3px solid var(--accent);padding-left:10px}
+.sources{font-size:12px;color:var(--tx2);margin-top:4px;
+  padding-top:4px;border-top:1px dashed var(--line)}
+.typing{display:inline-flex;gap:3px;padding:8px 2px}
+.typing span{width:6px;height:6px;background:var(--tx2);border-radius:50%;
+  animation:t 1.2s infinite ease-in-out}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes t{0%,80%,100%{opacity:.3;transform:translateY(0)}
+  40%{opacity:1;transform:translateY(-3px)}}
+.status{text-align:center;color:var(--tx2);font-size:11px;
+  padding:4px 0;letter-spacing:.3px}
+/* --- composer --- */
+.composer{background:var(--header);padding:8px;display:flex;gap:6px;
+  align-items:center;border-top:1px solid var(--line)}
+.btn{background:transparent;border:0;color:var(--tx2);
+  padding:8px;border-radius:50%;cursor:pointer;font-size:18px;
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+.btn:hover{background:#2A3942;color:var(--tx)}
+.btn.rec{color:var(--warn);background:#2A3942}
+.input{flex:1;background:#2A3942;border-radius:21px;padding:8px 14px}
+.input input{width:100%;border:0;outline:0;background:transparent;
+  color:var(--tx);font:inherit}
+.send{background:var(--accent);color:#0A0C10;border-radius:50%;
+  width:38px;height:38px;border:0;cursor:pointer;font-size:17px}
+/* --- glass box side panel --- */
+.glass{display:none;grid-column:2;background:var(--card);
+  border-left:1px solid var(--line);overflow-y:auto;padding:16px;
+  font-family:'Space Grotesk',ui-monospace,monospace;font-size:12.5px}
+.glass h2{font-size:12px;color:var(--tx2);text-transform:uppercase;
+  letter-spacing:1.3px;margin:0 0 12px}
+.event{padding:6px 10px;border-left:2px solid var(--line);margin:0 0 4px}
+.event .lbl{color:var(--accent);font-weight:500}
+.event .det{color:var(--tx2);font-size:11.5px;margin-top:2px;
+  overflow-wrap:anywhere}
+.event.verify{border-left-color:#F7B500}
+.event.error{border-left-color:var(--warn)}
+.chip{display:inline-block;background:#2A3942;color:var(--tx2);
+  padding:2px 7px;border-radius:999px;font-size:10.5px;margin-left:6px}
+.drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,168,132,.14);border:2px dashed var(--accent);z-index:10;
+  text-align:center;font-size:16px;font-weight:500;backdrop-filter:blur(2px)}
+.drop.on{display:flex}
+.drop small{display:block;color:var(--tx2);font-size:12px;margin-top:6px;font-weight:400}
+.filecard{display:flex;align-items:center;gap:10px;min-width:210px;padding:4px 2px 6px}
+.filecard .ico{width:38px;height:44px;border-radius:6px;background:#2A3942;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.filecard b{display:block;font-weight:500;font-size:13.5px;word-break:break-all}
+.filecard span{font-size:11.5px;color:var(--tx2)}
+.quickbar{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;
+  background:var(--header);border-top:1px solid var(--line)}
+.quick{white-space:nowrap;background:#2A3942;color:var(--tx);
+  border:0;border-radius:14px;padding:6px 12px;font-size:12.5px;
+  cursor:pointer}
+.quick:hover{background:var(--accent);color:#0A0C10}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="chat">
+    <div class="avatar">M</div>
+    <div class="who">
+      <h1>MunimAI</h1>
+      <p id="status">online · your WhatsApp munim</p>
+    </div>
+  </header>
+
+  <div class="scroll" id="scroll">
+    <div class="status">Today</div>
+    <div class="row them"><div class="bubble">
+Namaste! I'm MunimAI — your WhatsApp munim.<br><br>
+Send me a <b>bill photo</b> and I'll add it to your books.<br>
+Ask about a <b>MUDRA loan</b> and I'll check with the official rules.<br>
+Record a <b>voice note</b> in Hindi or Kannada — I'll understand.
+<span class="time">now</span>
+    </div></div>
+  </div>
+
+  <div class="quickbar">
+    <button class="quick" onclick="quick('Can I get a MUDRA loan for my tailoring business?')">MUDRA loan?</button>
+    <button class="quick" onclick="quick('What documents do I need?')">Documents?</button>
+    <button class="quick" onclick="quick('Explain my GST')">Explain GST</button>
+  </div>
+
+  <div class="composer">
+    <button class="btn" title="Attach a bill (photo, PNG, JPEG, PDF) or an audio file"
+      onclick="document.getElementById('fileInput').click()">📎</button>
+    <button class="btn" id="recBtn" onclick="toggleRec()" title="Voice note">🎤</button>
+    <div class="input"><input id="msg" placeholder="Type a message" autocomplete="off"
+      onkeydown="if(event.key==='Enter')send()"></div>
+    <button class="send" onclick="send()" title="Send">➤</button>
+    <input type="file" id="fileInput" accept="image/*,application/pdf,audio/*" multiple
+      style="display:none" onchange="[...this.files].forEach(handleFile);this.value=''">
+  </div>
+  <div class="drop" id="drop"><div>Drop a bill photo, PDF or voice note<small>PNG · JPEG · PDF · audio</small></div></div>
+</div>
+
+<aside class="glass" id="glass">
+  <h2>Glass box — what the agents did</h2>
+  <div id="trace"><p style="color:#55606a;font-style:italic">Send a message to see the agent trace…</p></div>
+</aside>
+
+<script>
+const scroll=document.getElementById('scroll'),trace=document.getElementById('trace'),
+  msgInput=document.getElementById('msg'),statusEl=document.getElementById('status');
+let recorder=null,recChunks=[],recLang='hi';
+
+function fmtTime(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+function addBubble(side,html,{cls=''}={}){
+  const row=document.createElement('div');row.className='row '+side;
+  const b=document.createElement('div');b.className='bubble '+cls;b.innerHTML=html+'<span class="time">'+fmtTime()+'</span>';
+  row.appendChild(b);scroll.appendChild(row);scroll.scrollTop=scroll.scrollHeight;return b;
+}
+function addTyping(){
+  const row=document.createElement('div');row.className='row them';row.id='typing';
+  row.innerHTML='<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  scroll.appendChild(row);scroll.scrollTop=scroll.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+
+async function send(){
+  const t=msgInput.value.trim();if(!t)return;
+  msgInput.value='';addBubble('me',escapeHtml(t));addTyping();
+  try{
+    const r=await fetch('/sim/text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+    const d=await r.json();removeTyping();
+    const cited=/\bclause\b|\bsources?\b/i.test(d.reply);
+    addBubble('them',formatReply(d.reply),{cls:cited?'citation':''});
+    if(d.trace_id)loadTrace(d.trace_id);
+  }catch(e){removeTyping();addBubble('them','(connection problem: '+e+')');}
+}
+function quick(t){msgInput.value=t;send();}
+
+const MAX_MB=15;
+function sizeLabel(n){return n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';}
+
+// One entry point for every upload: photo/PNG/JPEG and PDF -> Ledger, audio -> voice path.
+async function handleFile(file){
+  if(!file)return;
+  if(file.size>MAX_MB*1048576){addBubble('them','That file is over '+MAX_MB+' MB. Please send a smaller one.');return;}
+  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+  const isAudio=file.type.startsWith('audio/');
+  const isImage=file.type.startsWith('image/');
+  if(!isPdf&&!isAudio&&!isImage){addBubble('them','I can read photos (PNG, JPEG), PDFs and audio files.');return;}
+  const url=URL.createObjectURL(file);
+  if(isImage)addBubble('me','<img src="'+url+'" alt="bill">');
+  else if(isAudio)addBubble('me','<audio controls src="'+url+'"></audio>');
+  else addBubble('me','<div class="filecard"><div class="ico">📄</div><div><b>'+escapeHtml(file.name)+'</b><span>PDF · '+sizeLabel(file.size)+'</span></div></div>');
+  addTyping();
+  const fd=new FormData();fd.append('file',file,file.name);
+  if(isAudio)fd.append('language',recLang);
+  try{
+    const r=await fetch(isAudio?'/sim/voice':'/sim/image',{method:'POST',body:fd});
+    const d=await r.json();removeTyping();
+    if(d.transcript)addBubble('me','<i style="color:#8DD0C0">heard: '+escapeHtml(d.transcript)+'</i>');
+    addBubble('them',isAudio?formatReply(d.reply):escapeHtml(d.reply));
+    if(d.trace_id)loadTrace(d.trace_id);
+  }catch(e){removeTyping();addBubble('them','(upload error: '+e+')');}
+}
+
+const dropEl=document.getElementById('drop');let dragDepth=0;
+addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;dropEl.classList.add('on');});
+addEventListener('dragleave',e=>{e.preventDefault();if(--dragDepth<=0){dragDepth=0;dropEl.classList.remove('on');}});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();dragDepth=0;dropEl.classList.remove('on');[...e.dataTransfer.files].forEach(handleFile);});
+addEventListener('paste',e=>{[...(e.clipboardData?.files||[])].forEach(handleFile);});
+
+async function toggleRec(){
+  const btn=document.getElementById('recBtn');
+  if(recorder&&recorder.state==='recording'){recorder.stop();btn.classList.remove('rec');return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    recorder=new MediaRecorder(stream);recChunks=[];
+    recorder.ondataavailable=e=>recChunks.push(e.data);
+    recorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(recChunks,{type:recorder.mimeType||'audio/webm'});
+      const url=URL.createObjectURL(blob);
+      addBubble('me','<audio controls src="'+url+'"></audio>');addTyping();
+      const fd=new FormData();fd.append('file',blob,'voice.webm');fd.append('language',recLang);
+      try{
+        const r=await fetch('/sim/voice',{method:'POST',body:fd});
+        const d=await r.json();removeTyping();
+        if(d.transcript)addBubble('me','<i style="color:#8DD0C0">heard: '+escapeHtml(d.transcript)+'</i>');
+        addBubble('them',formatReply(d.reply));
+        if(d.trace_id)loadTrace(d.trace_id);
+      }catch(e){removeTyping();addBubble('them','(voice error: '+e+')');}
+    };
+    recorder.start();btn.classList.add('rec');
+    setTimeout(()=>{if(recorder.state==='recording'){recorder.stop();btn.classList.remove('rec');}},15000);
+  }catch(e){addBubble('them','Microphone access denied. Type instead.');}
+}
+
+function formatReply(text){
+  if(!text)return'';
+  const i=text.indexOf('(Sources:');
+  if(i<0)return escapeHtml(text);
+  return escapeHtml(text.slice(0,i).trim())+'<div class="sources">'+escapeHtml(text.slice(i))+'</div>';
+}
+function escapeHtml(s){return(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function loadTrace(id){
+  try{
+    const r=await fetch('/sim/trace/'+id);const d=await r.json();
+    const map={message_in:'in',message_out:'out',route:'route',
+      agent_start:'start',agent_end:'done',llm_call:'LLM',
+      tool_call:'tool',tool_result:'result',verifier:'verify',error:'error'};
+    trace.innerHTML=d.events.map(e=>{
+      const label=map[e.event_type]||e.event_type;
+      const cls=e.event_type==='verifier'?'verify':e.event_type==='error'?'error':'';
+      const name=e.tool_name||e.agent;
+      const payload=Object.entries(e.payload||{}).slice(0,2).map(([k,v])=>{
+        const vs=typeof v==='string'?v:JSON.stringify(v);
+        return escapeHtml(k+': '+(vs.length>120?vs.slice(0,120)+'…':vs));
+      }).join('<br>');
+      const lat=e.latency_ms?'<span class="chip">'+e.latency_ms+'ms</span>':'';
+      return '<div class="event '+cls+'"><div class="lbl">'+escapeHtml(label)+' · '+escapeHtml(name)+lat+'</div>'
+        +(payload?'<div class="det">'+payload+'</div>':'')+'</div>';
+    }).join('');
+  }catch{}
+}
+</script>
+</body>
+</html>

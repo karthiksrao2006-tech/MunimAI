@@ -55,8 +55,8 @@ _SYSTEM = (
     "to ('Bill to' / 'Buyer'). "
     "amount is the TOTAL payable in rupees (a number, not a string). "
     "gst_rate_percent is the TOTAL GST rate: when CGST and SGST are shown "
-    "separately, ADD them (CGST 9% + SGST 9% = 18); IGST is already the full rate; "
-    "else null. "
+    "separately, ADD them (CGST 9% + SGST 9% = 18); IGST or a single 'GST @x%' line "
+    "is already the full rate; if no GST is shown, null. "
     "If a field is not printed clearly, use null. Never guess an amount."
 )
 

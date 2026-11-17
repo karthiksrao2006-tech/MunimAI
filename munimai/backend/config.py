@@ -91,6 +91,7 @@ class LLMSettings:
     model_served_name: str   # what the OpenAI API expects in the "model" field
     model_path: str          # the on-disk path, for reference
     timeout_s: int = 120
+    role: str = "boss"       # "boss" (Qwen/GPU) or "worker" (Gemma/CPU) — trace tag only
 
     @classmethod
     def from_env(cls) -> "LLMSettings":
@@ -104,6 +105,28 @@ class LLMSettings:
                 "/home/admin/munimai/models/Qwen2.5-7B-Instruct-AWQ",
             ),
             timeout_s=int(os.environ.get("LLM_TIMEOUT_S", "120")),
+            role="boss",
+        )
+
+    @classmethod
+    def from_env_worker(cls) -> "LLMSettings":
+        """
+        The worker model: a small Gemma served by llama.cpp on CPU/RAM only
+        (no GPU VRAM, capped at 28 GB by a systemd MemoryMax on the lab box).
+        Used for narrow, parallelisable extraction jobs (bill-field extraction,
+        synthetic scenario generation) so the GPU stays free for the boss.
+        """
+        return cls(
+            base_url=os.environ.get(
+                "WORKER_LLM_BASE_URL", "http://100.86.188.31:8090/v1"
+            ),
+            model_served_name=os.environ.get("WORKER_LLM_MODEL", "gemma-3-4b-it"),
+            model_path=os.environ.get(
+                "WORKER_LLM_MODEL_PATH",
+                "/home/admin/models/gemma3-4b-worker/gemma-3-4b-it-Q4_K_M.gguf",
+            ),
+            timeout_s=int(os.environ.get("WORKER_LLM_TIMEOUT_S", "60")),
+            role="worker",
         )
 
 

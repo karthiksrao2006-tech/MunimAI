@@ -63,7 +63,7 @@ class LLM:
             trace.emit(
                 agent, "llm_call",
                 {"messages": messages, "temperature": temperature,
-                 "max_tokens": max_tokens},
+                 "max_tokens": max_tokens, "model_role": self.s.role},
             )
 
         start = time.perf_counter()
@@ -98,7 +98,7 @@ class LLM:
         if trace is not None:
             trace.emit(
                 agent, "llm_call",
-                {"response": text[:2000]},
+                {"response": text[:2000], "model_role": self.s.role},
                 latency_ms=latency_ms,
                 tokens_in=result.tokens_in, tokens_out=result.tokens_out,
             )
