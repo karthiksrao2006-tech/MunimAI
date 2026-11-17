@@ -266,6 +266,32 @@ def _sim_business(conn: psycopg.Connection) -> int:
     ).fetchone()[0]
 
 
+@app.get("/sim/status")
+def sim_status() -> dict:
+    """Health of the two models, for the test console's status strip."""
+    return {"boss": _llm.health(), "worker": _ledger_llm.health()}
+
+
+@app.get("/sim/books")
+def sim_books() -> dict:
+    """Latest ledger entries for the demo business, for the test console."""
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn); conn.commit()
+        rows = conn.execute(
+            """SELECT entry_date, direction, amount_paise, category, counterparty,
+                      gst_rate_bp, needs_review
+               FROM ledger_entries WHERE business_id=%s ORDER BY id DESC LIMIT 8""",
+            (bid,)).fetchall()
+        return {"entries": [
+            {"date": str(r[0]), "direction": r[1], "amount": int(r[2]) / 100,
+             "category": r[3], "counterparty": r[4],
+             "gst_pct": (r[5] / 100) if r[5] else None, "review": r[6]}
+            for r in rows]}
+    finally:
+        conn.close()
+
+
 @app.post("/sim/text")
 async def sim_text(body: dict) -> dict:
     """Simulated text message in, agent reply out."""
