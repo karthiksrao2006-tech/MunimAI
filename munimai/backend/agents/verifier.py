@@ -63,7 +63,7 @@ class Verifier:
         for pat in _FILING_ASSERTIONS:
             if re.search(pat, claim.text, re.IGNORECASE):
                 reasons.append(
-                    "asserts a filing/submission happened; MunimAI only prepares"
+                    "asserts a filing/submission happened; SaralcreditAI only prepares"
                 )
                 break
 

@@ -26,10 +26,10 @@ import re
 Intent = str
 
 # Short canned replies for the intents that don't need the LLM at all.
-# Grounded in what MunimAI really does, not model imagination.
+# Grounded in what SaralcreditAI really does, not model imagination.
 CANNED = {
     "greeting": (
-        "Namaste! I'm MunimAI — your WhatsApp munim.\n\n"
+        "Namaste! I'm SaralcreditAI, your credit and compliance helper.\n\n"
         "Send me a bill photo, ask about a MUDRA loan, or record a voice "
         "note in Hindi or Kannada. I'll do the rest."
     ),
@@ -46,7 +46,7 @@ CANNED = {
         "submit a loan for you: I prepare, you review and decide."
     ),
     "documents": (
-        "For MunimAI to work, send me what the business already has:\n\n"
+        "For SaralcreditAI to work, send me what the business already has:\n\n"
         "- A clear photo of each supplier and customer bill (I'll extract the amount and GST).\n"
         "- Your Udyam number and GSTIN (if you have them — I can work without).\n"
         "- A WhatsApp voice note describing anything that isn't on a bill.\n\n"

@@ -16,7 +16,7 @@ import requests
 
 from .config import CITATION_ALLOWLIST
 
-_UA = "Mozilla/5.0 (compatible; MunimAI-assistant/0.1)"
+_UA = "Mozilla/5.0 (compatible; SaralcreditAI-assistant/0.1)"
 _OFFICIAL_SUFFIXES = (".gov.in", ".nic.in")
 _PAGE_CHARS = 2500
 

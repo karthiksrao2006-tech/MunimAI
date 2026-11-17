@@ -7,12 +7,12 @@ import time
 from .pdfdoc import html_to_pdf, pdf_first_page_png, stamp_footer, t
 from .voice import split_sources
 
-FOOTER = "Prepared by MunimAI. Information only, not legal, tax or banking advice."
+FOOTER = "Prepared by SaralcreditAI. Information only, not legal, tax or banking advice."
 
 
 def reply_pdf(question: str, reply: str, reply_en: str = "", language: str = "en") -> bytes:
     body, sources = split_sources(reply)
-    parts = [f"<h1>MunimAI answer</h1><p class='muted'>{time.strftime('%d %B %Y, %H:%M')}</p>"]
+    parts = [f"<h1>SaralcreditAI answer</h1><p class='muted'>{time.strftime('%d %B %Y, %H:%M')}</p>"]
     if question:
         parts.append(f"<h2>Your question</h2><p>{t(question)}</p>")
     parts.append(f"<h2>Answer</h2><p>{t(body)}</p>")

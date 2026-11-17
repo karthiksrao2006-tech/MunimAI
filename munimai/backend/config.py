@@ -1,5 +1,5 @@
 """
-Central configuration for MunimAI, loaded from environment / .env.
+Central configuration for SaralcreditAI, loaded from environment / .env.
 
 Nothing here has a secret default. If a credential is missing, the component
 that needs it raises a clear error at startup rather than failing obscurely

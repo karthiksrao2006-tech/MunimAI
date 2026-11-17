@@ -1,7 +1,7 @@
 """
 The Document agent - assembles the lender-ready loan file (PS 3.2 deliverable).
 
-This is the thing MunimAI actually hands a lender: one packet that pulls
+This is the thing SaralcreditAI actually hands a lender: one packet that pulls
 together what the other agents produced -
   - business identity (Udyam, GSTIN)
   - a cash-flow summary from the ledger
@@ -142,7 +142,7 @@ class DocumentAgent:
     def render(f: LoanFile) -> str:
         """A plain text rendering of the file, for the demo / a banker to read."""
         lines = [
-            "LENDER-READY LOAN FILE  (prepared by MunimAI - not submitted)",
+            "LENDER-READY LOAN FILE  (prepared by SaralcreditAI - not submitted)",
             "=" * 58,
             f"Business      : {f.business_name}",
             f"Udyam / GSTIN : {f.udyam or '-'} / {f.gstin or '-'}",

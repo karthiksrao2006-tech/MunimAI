@@ -25,7 +25,7 @@ from .document import DocumentAgent
 from .scheme import SchemeAgent
 from .verifier import Verifier
 
-FOOTER = ("Prepared by MunimAI from documents supplied by the owner. A draft for the owner's review; "
+FOOTER = ("Prepared by SaralcreditAI from documents supplied by the owner. A draft for the owner's review; "
           "not a bank decision or an approval.")
 
 _REQUIRED = [
@@ -105,7 +105,7 @@ class DossierAgent:
             affordable_emi_paise=view.suggested_emi_paise if (view and credit_ok) else 0, trace=trace)
 
         h = [f"<h1>Business loan file</h1><p class='muted'>{t(name)} &middot; prepared {date.today():%d %B %Y}</p>",
-             "<div class='note'>This file was prepared by MunimAI from the owner's own books and documents. "
+             "<div class='note'>This file was prepared by SaralcreditAI from the owner's own books and documents. "
              "It is a draft for the owner to review before sharing. It is not an application, a bank decision "
              "or an approval.</div>",
              f"<h2>Business profile</h2><table><tr><td>Business name</td><td>{t(name)}</td></tr>"

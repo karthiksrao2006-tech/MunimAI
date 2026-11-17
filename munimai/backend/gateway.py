@@ -49,7 +49,7 @@ from .trace import Trace
 from .voice import detect_language, iter_clips, localize_reply, speak_clips, to_english
 from .whatsapp import InboundMessage, WhatsAppClient
 
-app = FastAPI(title="MunimAI WhatsApp Gateway")
+app = FastAPI(title="SaralcreditAI WhatsApp Gateway")
 
 _db = DBSettings.from_env()
 _wa_settings = WhatsAppSettings.from_env()
@@ -562,10 +562,10 @@ def _special(intent: str, text_en: str, bid: int, conn: psycopg.Connection, trac
     if intent == "dossier":
         yield _sse("stage", {"id": "dossier", "label": "Preparing your bank file"})
         pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
-        tok = _stash(pdf, "MunimAI-bank-file.pdf", "application/pdf")
+        tok = _stash(pdf, "SaralcreditAI-bank-file.pdf", "application/pdf")
         msg = ("Your bank file is ready. It has your books, GST summary, the proofs on file and what is still "
                "missing. Please review it before you share it. Tick the documents you want attached in the Documents list.")
-        file_ev = {"url": f"/sim/file/{tok}", "name": "MunimAI-bank-file.pdf"}
+        file_ev = {"url": f"/sim/file/{tok}", "name": "SaralcreditAI-bank-file.pdf"}
     elif intent == "application":
         msg = ("I can draft the covering letter and loan application for your bank. Use the Loan application "
                "button to choose the bank, scheme, amount and purpose.")
@@ -578,7 +578,7 @@ def _special(intent: str, text_en: str, bid: int, conn: psycopg.Connection, trac
             png = any(w in text_en.lower() for w in ("image", "png", "picture", "jpeg"))
             fn = _export.reply_png if png else _export.reply_pdf
             data = fn(last["q"], last["reply"], last["reply_en"], last["lang"])
-            name = "MunimAI-answer." + ("png" if png else "pdf")
+            name = "SaralcreditAI-answer." + ("png" if png else "pdf")
             file_ev = {"url": f"/sim/file/{_stash(data, name, 'image/png' if png else 'application/pdf')}", "name": name}
             msg = "Here is your answer " + ("as an image." if png else "as a PDF.")
     try:
@@ -705,8 +705,8 @@ def sim_dossier(x_munim_id: Optional[str] = Header(None)) -> dict:
         bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
-        return {"url": f"/sim/file/{_stash(pdf, 'MunimAI-bank-file.pdf', 'application/pdf')}",
-                "name": "MunimAI-bank-file.pdf"}
+        return {"url": f"/sim/file/{_stash(pdf, 'SaralcreditAI-bank-file.pdf', 'application/pdf')}",
+                "name": "SaralcreditAI-bank-file.pdf"}
     finally:
         conn.close()
 
@@ -730,7 +730,7 @@ def sim_application(body: dict, x_munim_id: Optional[str] = Header(None)) -> dic
         bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         pdf = ApplicationAgent(conn, _llm, tr).build(bid, req, trace=trace)
-        name = "MunimAI-loan-application.pdf"
+        name = "SaralcreditAI-loan-application.pdf"
         return {"url": f"/sim/file/{_stash(pdf, name, 'application/pdf')}", "name": name}
     finally:
         conn.close()
@@ -742,7 +742,7 @@ def sim_export(body: dict) -> dict:
     fn = _export.reply_png if fmt == "png" else _export.reply_pdf
     data = fn(str(body.get("question", ""))[:600], str(body.get("reply", ""))[:6000],
               str(body.get("reply_en", ""))[:6000], str(body.get("language", "en")))
-    name = f"MunimAI-answer.{fmt}"
+    name = f"SaralcreditAI-answer.{fmt}"
     return {"url": f"/sim/file/{_stash(data, name, 'image/png' if fmt == 'png' else 'application/pdf')}", "name": name}
 
 

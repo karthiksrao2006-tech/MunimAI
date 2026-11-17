@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 import requests
 
 KB_DIR = Path(__file__).parent
-UA = "MunimAI-KB/1.0 (research prototype; official-source clause extraction)"
+UA = "SaralcreditAI-KB/1.0 (research prototype; official-source clause extraction)"
 DELAY_S = 1.5
 TIMEOUT_S = 30
 MAX_CLAUSE_CHARS = 700

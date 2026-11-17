@@ -3,7 +3,7 @@ Load the scheme knowledge base into Postgres.
 
 The allowlist is enforced HERE, at load time, not just at query time: a clause
 whose source domain is not official never enters the database at all. So even a
-bug elsewhere cannot cause MunimAI to cite a non-official source: there is
+bug elsewhere cannot cause SaralcreditAI to cite a non-official source: there is
 nothing non-official stored to cite.
 
 Every kb/*.json file is loaded (one per scheme). Re-running is idempotent:

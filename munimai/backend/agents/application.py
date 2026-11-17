@@ -22,7 +22,7 @@ from ..pdfdoc import html_to_pdf, inr, stamp_footer, t
 from ..trace import Trace
 from .dossier import monthly_rows
 
-FOOTER = ("DRAFT prepared by MunimAI for the owner's review. Banks use their own forms and make their own "
+FOOTER = ("DRAFT prepared by SaralcreditAI for the owner's review. Banks use their own forms and make their own "
           "decision. Nothing here has been submitted.")
 BLANK = "<span class='blank'>________________</span>"
 

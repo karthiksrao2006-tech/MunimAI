@@ -2,7 +2,7 @@
 bhashini_client.py
 ------------------
 Client for Bhashini (MeitY / National Language Translation Mission) used by
-MunimAI for voice-first interaction in Hindi and Kannada.
+SaralcreditAI for voice-first interaction in Hindi and Kannada.
 
 Where this sits in the architecture: a WhatsApp voice note is converted to text
 BEFORE anything reaches the LLM. speech_to_text() produces the text that the
