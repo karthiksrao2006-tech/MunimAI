@@ -18,7 +18,7 @@ from .bhashini_client import BhashiniClient
 _KN = re.compile(r"[ಀ-೿]")
 _HI = re.compile(r"[ऀ-ॿ]")
 _MAX_SPOKEN_CHARS = 700
-_CLIP_CHARS = 260
+_CLIP_CHARS = 120
 
 
 def detect_language(text: str) -> str:
@@ -48,8 +48,24 @@ def localize_reply(bh: Optional[BhashiniClient], reply_en: str, lang: str) -> st
     return f"{local}\n\n{tail}" if tail else local
 
 
+def _pieces(sentence: str) -> list[str]:
+    """Break a long sentence at commas, then spaces, so every clip stays short."""
+    if len(sentence) <= _CLIP_CHARS:
+        return [sentence]
+    out, cur = [], ""
+    for part in re.split(r"(?<=,)\s+|\s+", sentence):
+        if cur and len(cur) + len(part) + 1 > _CLIP_CHARS:
+            out.append(cur)
+            cur = part
+        else:
+            cur = f"{cur} {part}".strip()
+    if cur:
+        out.append(cur)
+    return out
+
+
 def _chunks(text: str) -> list[str]:
-    sentences = re.split(r"(?<=[.!?।])\s+", text.strip())
+    sentences = [p for s in re.split(r"(?<=[.!?।])\s+", text.strip()) for p in _pieces(s)]
     out, cur = [], ""
     for s in sentences:
         if cur and len(cur) + len(s) > _CLIP_CHARS:
@@ -62,16 +78,20 @@ def _chunks(text: str) -> list[str]:
     return out
 
 
-def speak_clips(bh: Optional[BhashiniClient], reply_local: str, lang: str) -> list[str]:
-    """Base64 WAV clips of the reply (citations excluded). Hindi/Kannada only;
-    English is spoken by the browser's own synthesizer."""
+def iter_clips(bh: Optional[BhashiniClient], reply_local: str, lang: str):
+    """Yield base64 WAV clips one sentence-group at a time, so playback can start
+    while later clips are still being synthesised. Citations are never spoken;
+    Hindi/Kannada only (English is spoken by the browser)."""
     if bh is None or lang not in ("hi", "kn"):
-        return []
+        return
     body, _ = split_sources(reply_local)
-    clips, used = [], 0
+    used = 0
     for chunk in _chunks(body):
         if used + len(chunk) > _MAX_SPOKEN_CHARS:
             break
-        clips.append(base64.b64encode(bh.text_to_speech(chunk, lang, sampling_rate=16000)).decode("ascii"))
+        yield base64.b64encode(bh.text_to_speech(chunk, lang, sampling_rate=16000)).decode("ascii")
         used += len(chunk)
-    return clips
+
+
+def speak_clips(bh: Optional[BhashiniClient], reply_local: str, lang: str) -> list[str]:
+    return list(iter_clips(bh, reply_local, lang))

@@ -21,13 +21,14 @@ webhook to reach it.
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Optional
 
 import psycopg
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Header, Request, Response
+from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from .agents.ledger import LedgerAgent
 from .agents.scheme import SchemeAgent
@@ -39,7 +40,7 @@ from .llm import LLM
 from .ocr import RemoteEasyOCR
 from .seeds import send_seed
 from .trace import Trace
-from .voice import detect_language, localize_reply, speak_clips, to_english
+from .voice import detect_language, iter_clips, localize_reply, speak_clips, to_english
 from .whatsapp import InboundMessage, WhatsAppClient
 
 app = FastAPI(title="MunimAI WhatsApp Gateway")
@@ -302,17 +303,56 @@ from fastapi.responses import FileResponse, JSONResponse
 _SIM_PHONE = "+919900000001"      # Lakshmi (demo business)
 
 
-def _sim_business(conn: psycopg.Connection) -> int:
-    row = conn.execute(
-        "SELECT id FROM businesses WHERE whatsapp_phone=%s", (_SIM_PHONE,)
-    ).fetchone()
+def _sim_business(conn: psycopg.Connection, munim_id: Optional[str] = None) -> int:
+    """The business for this browser. Each browser gets its own real profile,
+    keyed by an id it generates once; without an id we fall back to the shared
+    synthetic demo business (used only by tests and old clients)."""
+    import re as _re
+
+    clean = _re.sub(r"[^A-Za-z0-9-]", "", munim_id or "")[:64]
+    if not clean:
+        row = conn.execute("SELECT id FROM businesses WHERE whatsapp_phone=%s", (_SIM_PHONE,)).fetchone()
+        if row:
+            return row[0]
+        return conn.execute(
+            "INSERT INTO businesses (whatsapp_phone, display_name, language, is_synthetic)"
+            " VALUES (%s,%s,'kn',TRUE) RETURNING id", (_SIM_PHONE, "Lakshmi Tailoring Unit"),
+        ).fetchone()[0]
+    key = f"web:{clean}"
+    row = conn.execute("SELECT id FROM businesses WHERE whatsapp_phone=%s", (key,)).fetchone()
     if row:
         return row[0]
     return conn.execute(
         "INSERT INTO businesses (whatsapp_phone, display_name, language, is_synthetic)"
-        " VALUES (%s,%s,'kn',TRUE) RETURNING id",
-        (_SIM_PHONE, "Lakshmi Tailoring Unit"),
+        " VALUES (%s,%s,'kn',FALSE) RETURNING id", (key, "My business"),
     ).fetchone()[0]
+
+
+@app.get("/sim/profile")
+def sim_profile(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        r = conn.execute("SELECT display_name, gstin, udyam_number FROM businesses WHERE id=%s", (bid,)).fetchone()
+        return {"name": r[0], "gstin": r[1], "udyam": r[2], "is_new": r[0] == "My business"}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/profile")
+def sim_profile_save(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
+    name = (body.get("name") or "").strip()[:80]
+    if not name:
+        return {"error": "Enter your business name."}
+    gstin = (body.get("gstin") or "").strip().upper()[:15] or None
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id)
+        conn.execute("UPDATE businesses SET display_name=%s, gstin=%s WHERE id=%s", (name, gstin, bid))
+        conn.commit()
+        return {"name": name, "gstin": gstin}
+    finally:
+        conn.close()
 
 
 @app.get("/sim/status")
@@ -322,11 +362,11 @@ def sim_status() -> dict:
 
 
 @app.get("/sim/books")
-def sim_books() -> dict:
+def sim_books(x_munim_id: Optional[str] = Header(None)) -> dict:
     """Latest ledger entries for the demo business, for the test console."""
     conn = _get_conn()
     try:
-        bid = _sim_business(conn); conn.commit()
+        bid = _sim_business(conn, x_munim_id); conn.commit()
         rows = conn.execute(
             """SELECT entry_date, direction, amount_paise, category, counterparty,
                       gst_rate_bp, needs_review
@@ -342,14 +382,14 @@ def sim_books() -> dict:
 
 
 @app.post("/sim/text")
-async def sim_text(body: dict) -> dict:
+async def sim_text(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
     """Text in any supported language; reply in the same language."""
     text = (body.get("text") or "").strip()
     if not text:
         return {"reply": "(empty message)"}
     conn = _get_conn()
     try:
-        bid = _sim_business(conn); conn.commit()
+        bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         trace.emit("router", "message_in", {"type": "text", "from": "sim"})
         return _converse(text, body.get("language", "auto"), bid, conn, trace,
@@ -381,12 +421,12 @@ def _pdf_text(path: str, max_pages: int = 3) -> str:
 
 
 @app.post("/sim/image")
-async def sim_image(file: UploadFile = File(...)) -> dict:
+async def sim_image(file: UploadFile = File(...), x_munim_id: Optional[str] = Header(None)) -> dict:
     """Simulated bill upload (photo, PNG/JPEG or PDF). Runs the real Ledger
     pipeline (OCR -> structure)."""
     conn = _get_conn()
     try:
-        bid = _sim_business(conn); conn.commit()
+        bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         trace.emit("router", "message_in", {"type": "image", "from": "sim"})
         with tempfile.NamedTemporaryFile(
@@ -427,6 +467,7 @@ async def sim_image(file: UploadFile = File(...)) -> dict:
 @app.post("/sim/voice")
 async def sim_voice(
     file: UploadFile = File(...), language: str = Form("hi"),
+    x_munim_id: Optional[str] = Header(None),
 ) -> dict:
     """Voice note: Bhashini ASR -> English reasoning -> reply translated back
     and spoken in the same language."""
@@ -434,7 +475,7 @@ async def sim_voice(
         return {"reply": "Bhashini isn't configured; voice messages aren't available."}
     conn = _get_conn()
     try:
-        bid = _sim_business(conn); conn.commit()
+        bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
         trace.emit("router", "message_in", {"type": "audio", "from": "sim", "language": language})
         audio_bytes = await file.read()
@@ -450,6 +491,90 @@ async def sim_voice(
         return out
     finally:
         conn.close()
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[str]):
+    """One live turn as a stream of events: each pipeline stage is announced the
+    moment it starts, the reply arrives as soon as it is ready, and spoken audio
+    follows clip by clip so playback begins before synthesis finishes."""
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, munim_id); conn.commit()
+        trace = Trace(business_id=bid); trace.attach_db(conn)
+        trace.emit("router", "message_in", {"type": kind, "from": "web", "language": lang})
+        yield _sse("start", {"trace_id": str(trace.trace_id)})
+        if kind == "audio":
+            if _bhashini is None:
+                yield _sse("fail", {"message": "Voice is not configured on the server."}); return
+            yield _sse("stage", {"id": "hearing", "label": "Listening to your recording"})
+            try:
+                text = _bhashini.speech_to_text(_to_wav(payload), language=lang)  # type: ignore[arg-type]
+            except Exception as exc:
+                trace.emit("router", "error", {"stage": "asr", "error": str(exc)})
+                yield _sse("fail", {"message": "I couldn't make out that recording. Please try again, closer to the mic."}); return
+            trace.emit("router", "tool_result", {"transcript": text[:200]}, tool_name="bhashini.asr")
+            if not text.strip():
+                yield _sse("fail", {"message": "I didn't catch anything. Please try again."}); return
+            yield _sse("heard", {"text": text})
+        else:
+            text = payload
+        if lang == "auto":
+            lang = detect_language(text)
+        text_en = text
+        if lang != "en":
+            yield _sse("stage", {"id": "understanding", "label": "Translating to English"})
+            try:
+                text_en = to_english(_bhashini, text, lang)
+            except Exception as exc:
+                trace.emit("router", "error", {"stage": "translate_in", "error": str(exc)})
+                text_en, lang = text, "en"
+            trace.emit("router", "tool_result", {"language": lang, "understood": text_en[:200]}, tool_name="bhashini.translate")
+        yield _sse("understood", {"text": text_en, "language": lang})
+        send_seed("question", text_en, lang)
+        yield _sse("stage", {"id": "thinking", "label": "Checking the official rules"})
+        reply_en = _handle_question(text_en, bid, conn, trace)
+        reply = reply_en
+        if lang != "en":
+            yield _sse("stage", {"id": "translating", "label": "Writing the reply in your language"})
+            try:
+                reply = localize_reply(_bhashini, reply_en, lang)
+            except Exception as exc:
+                trace.emit("router", "error", {"stage": "translate_out", "error": str(exc)})
+                reply, lang = reply_en, "en"
+        trace.emit("router", "message_out", {"reply": reply[:300], "language": lang})
+        yield _sse("reply", {"text": reply, "text_en": reply_en, "language": lang})
+        if speak and lang in ("hi", "kn"):
+            yield _sse("stage", {"id": "speaking", "label": "Preparing the voice"})
+            try:
+                for i, clip in enumerate(iter_clips(_bhashini, reply, lang)):
+                    yield _sse("clip", {"i": i, "b64": clip})
+            except Exception as exc:
+                trace.emit("router", "error", {"stage": "tts", "error": str(exc)})
+        yield _sse("done", {})
+    except Exception as exc:  # never leave the browser waiting on a dead stream
+        yield _sse("fail", {"message": "Something went wrong on my side. Please try again.", "detail": str(exc)[:200]})
+    finally:
+        conn.close()
+
+
+@app.post("/sim/chat")
+async def sim_chat(
+    text: str = Form(""), language: str = Form("auto"), speak: str = Form("1"),
+    file: Optional[UploadFile] = File(None), x_munim_id: Optional[str] = Header(None),
+):
+    audio = await file.read() if file is not None else None
+    if audio:
+        gen = _chat_stream("audio", audio, language, speak == "1", x_munim_id)
+    else:
+        if not text.strip():
+            return {"error": "empty"}
+        gen = _chat_stream("text", text.strip(), language, speak == "1", x_munim_id)
+    return StreamingResponse(gen, media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.get("/sim/trace/{trace_id}")
