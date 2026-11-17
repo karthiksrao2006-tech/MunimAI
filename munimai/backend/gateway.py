@@ -54,6 +54,24 @@ except BhashiniConfigError:
     _bhashini = None  # voice messages degrade to "please type instead"
 
 
+def _to_wav(audio: bytes) -> bytes:
+    """Bhashini ASR accepts WAV only; browsers record WebM/Opus and WhatsApp
+    sends OGG/Opus. Re-encode anything else to 16 kHz mono WAV."""
+    if audio[:4] == b"RIFF":
+        return audio
+    import subprocess
+
+    import imageio_ffmpeg
+
+    proc = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", "pipe:0",
+         "-ar", "16000", "-ac", "1", "-f", "wav", "pipe:1"],
+        input=audio, capture_output=True, timeout=60)
+    if proc.returncode != 0 or not proc.stdout:
+        raise ValueError("could not decode audio: " + proc.stderr.decode(errors="replace")[:200])
+    return proc.stdout
+
+
 def _get_conn() -> psycopg.Connection:
     return psycopg.connect(_db.conninfo)
 
@@ -171,7 +189,7 @@ def _transcribe_voice(msg: InboundMessage, conn: psycopg.Connection,
         audio_bytes = Path(tmp_path).read_bytes()
         # Bhashini ASR expects WAV; WhatsApp sends OGG/Opus. For the demo we
         # try Hindi first — a real build would detect language or ask once.
-        text = _bhashini.speech_to_text(audio_bytes, language="hi")
+        text = _bhashini.speech_to_text(_to_wav(audio_bytes), language="hi")
         trace.emit("router", "tool_result", {"transcript": text[:200]},
                   tool_name="bhashini.asr")
         return text
@@ -390,7 +408,7 @@ async def sim_voice(
         trace.emit("router", "tool_call", {"bytes": len(audio_bytes)},
                    tool_name="bhashini.asr")
         try:
-            text = _bhashini.speech_to_text(audio_bytes, language=language)  # type: ignore[arg-type]
+            text = _bhashini.speech_to_text(_to_wav(audio_bytes), language=language)  # type: ignore[arg-type]
         except Exception as exc:
             trace.emit("router", "error", {"stage": "asr", "error": str(exc)})
             return {"reply": f"Could not transcribe: {exc}",
