@@ -30,3 +30,8 @@ munimai/uploads/
 munimai/seeds_pending.jsonl
 munimai/gateway.err
 tools/
+video/out/
+video/assets/
+video/*.log
+video/p*.mp3
+video/p*.wav

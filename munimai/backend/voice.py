@@ -17,7 +17,7 @@ from .bhashini_client import BhashiniClient
 
 _KN = re.compile(r"[ಀ-೿]")
 _HI = re.compile(r"[ऀ-ॿ]")
-_MAX_SPOKEN_CHARS = 700
+_MAX_SPOKEN_CHARS = 330
 _CLIP_CHARS = 120
 
 

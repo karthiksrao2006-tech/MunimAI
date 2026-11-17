@@ -347,7 +347,8 @@ def _sim_business(conn: psycopg.Connection, munim_id: Optional[str] = None) -> i
             return row[0]
         return conn.execute(
             "INSERT INTO businesses (whatsapp_phone, display_name, language, is_synthetic)"
-            " VALUES (%s,%s,'kn',TRUE) RETURNING id", (_SIM_PHONE, "Lakshmi Tailoring Unit"),
+            " VALUES (%s,%s,'kn',TRUE) ON CONFLICT (whatsapp_phone) DO UPDATE"
+            " SET whatsapp_phone=EXCLUDED.whatsapp_phone RETURNING id", (_SIM_PHONE, "Lakshmi Tailoring Unit"),
         ).fetchone()[0]
     key = f"web:{clean}"
     row = conn.execute("SELECT id FROM businesses WHERE whatsapp_phone=%s", (key,)).fetchone()
@@ -355,7 +356,8 @@ def _sim_business(conn: psycopg.Connection, munim_id: Optional[str] = None) -> i
         return row[0]
     return conn.execute(
         "INSERT INTO businesses (whatsapp_phone, display_name, language, is_synthetic)"
-        " VALUES (%s,%s,'kn',FALSE) RETURNING id", (key, "My business"),
+        " VALUES (%s,%s,'kn',FALSE) ON CONFLICT (whatsapp_phone) DO UPDATE"
+        " SET whatsapp_phone=EXCLUDED.whatsapp_phone RETURNING id", (key, "My business"),
     ).fetchone()[0]
 
 
