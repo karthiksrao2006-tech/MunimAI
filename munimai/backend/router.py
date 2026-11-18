@@ -74,6 +74,21 @@ def classify(text: str) -> Intent:
                 r"\b(save|send|give|download|make|export)\b.*\b(pdf|image|png|picture)\b"]):
         return "export"
 
+    # personalised checks, before the generic scheme question
+    if _any(t, [r"\bwhat (would|will|can|should) (i|make me|help me)\b.*\b(eligible|qualify)\b",
+                r"\bwhy (am i|can't i|cant i|am i not)\b.*\b(eligible|qualify)\b",
+                r"\bhow (can|do) i (become|get|be) eligible\b", r"\bscheme fit\b", r"\bcheck my (scheme|eligibility)\b",
+                r"\bwhich schemes?\b.*\b(am i|can i|do i)\b.*\b(eligible|qualify|get)\b",
+                r"\bmake me eligible\b", r"\bbecome eligible\b",
+                r"\bwhat (do|should|must|will) i (need to |have to |want to )?do to (be |become |get )?(eligible|qualify)\b",
+                r"\bhow (can|do|could|should) i (qualify|become eligible|be eligible|get eligible)\b"]):
+        return "fit"
+    if _any(t, [r"\b(credit|loan) readiness\b", r"\bhow ready\b", r"\bready for (a |an )?(bank |business )?(loan|lender|credit)\b", r"\bam i ready (for|to)\b.*\b(loan|lender|bank|credit)\b",
+                r"\b(improve|increase|boost)\b.*\b(my )?(chances|credit|score|readiness)\b",
+                r"\bgst discipline\b", r"\bhow (good|strong|ready) (are|is) my (books|credit)\b",
+                r"\bbooks (score|discipline)\b", r"\bcredit score\b"]):
+        return "readiness"
+
     # eligibility — strong signals win first
     if _any(t, [
         r"\bmudra\b", r"\bkishore\b", r"\bshishu\b", r"\btarun\b",

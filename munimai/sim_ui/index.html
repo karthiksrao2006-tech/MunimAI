@@ -148,6 +148,32 @@ details summary{cursor:pointer;font:600 16px var(--font-d);margin-bottom:8px}
 .drop{position:absolute;inset:10px;display:none;place-items:center;text-align:center;z-index:5;background:#F2F7F6EE;border:2.5px dashed var(--teal);border-radius:var(--r-lg);font:600 20px var(--font-d)}
 .drop.on{display:grid}.drop small{display:block;font:400 14px var(--font-b);color:var(--ink-2);margin-top:6px}
 
+
+/* ---- readiness, scheme fit ---- */
+.meter{height:10px;border-radius:99px;background:var(--wash);overflow:hidden;margin:6px 0 4px}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--teal);transition:width .5s}
+.score{display:flex;align-items:baseline;gap:8px}.score b{font:700 30px var(--font-d);color:var(--teal-d)}
+.fac{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+.fac:last-child{border:0}.fac small{display:block;color:var(--ink-2);font-size:12.5px}
+.gain{background:var(--gold-soft);color:var(--gold-d);border-radius:999px;padding:1px 8px;font-size:12px;white-space:nowrap;height:fit-content}
+.sw{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin-top:10px}
+.sw input{accent-color:var(--teal);width:18px;height:18px;margin-top:3px;flex:none}
+.sc{border:1px solid var(--line);border-radius:var(--r-md);margin:8px 0;background:var(--surface)}
+.sc>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:10px 12px;font:600 14.5px var(--font-b);margin:0;cursor:pointer}
+.sc>summary::-webkit-details-marker{display:none}
+.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;margin-left:auto}
+.pill.eligible{background:#DFF3E7;color:#1F6B3F}.pill.almost{background:var(--gold-soft);color:var(--gold-d)}
+.pill.not_eligible{background:#FBE3D6;color:#9A3410}.pill.unverified{background:var(--wash);color:var(--ink-2)}
+.cr{padding:8px 12px;border-top:1px solid var(--line);font-size:13.5px}
+.cr b.pass{color:#1F6B3F}.cr b.fail{color:#9A3410}.cr b.unknown,.cr b.todo{color:var(--gold-d)}
+.cr small{display:block;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.cr a{color:var(--teal-d)}
+.cardwrap{max-width:min(94%,640px)}
+.dlg.wide{max-width:620px}
+.dlg .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.dlg .grid{grid-template-columns:1fr}}
+.flash{animation:fl 1.2s 2}@keyframes fl{50%{background:var(--gold-soft)}}
+
 @media(max-width:1000px){
   .app{grid-template-columns:minmax(0,1fr)}
   .side{position:fixed;inset:0 0 0 auto;width:min(360px,92vw);transform:translateX(105%);transition:transform .22s;z-index:30;box-shadow:-10px 0 30px #0E2A3322}
@@ -190,6 +216,11 @@ details summary{cursor:pointer;font:600 16px var(--font-d);margin-bottom:8px}
   <aside class="side" id="side">
     <section><h2>This turn</h2><ol class="steps" id="steps"><li><span class="tick"></span>Waiting for your question</li></ol></section>
     <section><h2>Your books</h2><div id="books"><p class="empty">Nothing here yet. Send a bill to add it.</p></div></section>
+    <section id="readySec"><h2>Loan readiness</h2>
+      <div id="ready"><p class="empty">Turn on the switch below to see how ready your books look to a lender.</p></div>
+      <label class="sw" id="consentRow"><input type="checkbox" id="consent"><span>Let SaralcreditAI read my books for loan checks. You can switch this off any time.</span></label>
+      <div class="acts"><button class="primary sm" id="fitBtn">Scheme fit</button><button class="ghost sm" id="readyBtn">Refresh</button></div>
+    </section>
     <section><h2>Documents</h2>
       <div id="docs"><p class="empty">Upload a certificate, ID or bank statement and it appears here.</p></div>
       <div class="acts">
@@ -217,6 +248,13 @@ details summary{cursor:pointer;font:600 16px var(--font-d);margin-bottom:8px}
   <div class="hint" id="aErr" style="color:var(--alert)"></div>
   <div class="row"><button type="button" class="ghost" id="aCancel">Cancel</button><button class="primary" id="aGo">Draft it</button></div>
 </form></div>
+
+<div class="scrim" id="fitDlg" role="dialog" aria-modal="true" aria-labelledby="fitH"><div class="dlg wide">
+  <h2 id="fitH">Scheme fit</h2><p>Answer what you can. I check each scheme's published conditions, show the official clause, and tell you what would change a no. Leave a question blank if you are not sure.</p>
+  <form id="fitForm"><div class="grid" id="fitFields"></div>
+    <div class="row"><button type="button" class="ghost" id="fitClose">Close</button><button class="primary" id="fitGo">Check my fit</button></div></form>
+  <div id="fitOut"></div>
+</div></div>
 
 <div class="scrim" id="setup" role="dialog" aria-modal="true" aria-labelledby="setupH"><form class="dlg" id="setupForm">
   <h2 id="setupH"></h2><p id="setupP"></p>
@@ -298,7 +336,7 @@ function stepsEnd(){if(curStep){const now=performance.now();curStep.li.className
 
 /* ---------- the live turn: stream events as they happen ---------- */
 async function turn({text,blob,userBubble}){
-  stopSpeaking();if(ctl)ctl.abort();ctl=new AbortController();stepsReset();setState('thinking');curQ=text||'';
+  hold=false;stopSpeaking();if(ctl)ctl.abort();ctl=new AbortController();stepsReset();setState('thinking');curQ=text||'';
   const fd=new FormData();fd.append('language',blob?lang:'auto');fd.append('speak','1');if(blob)fd.append('file',blob,'voice.webm');else fd.append('text',text);
   let replyBubble=null,gotReply=false;
   const wait=add('them','<span class="live"><span class="dots"><i></i><i></i><i></i></span></span>');
@@ -318,7 +356,8 @@ async function turn({text,blob,userBubble}){
         else if(ev[1]==='fail'){wait.parentElement&&wait.parentElement.remove();add('them','<span class="err">'+esc(d.message)+'</span>');}
         else if(ev[1]==='start'){loadTrace.id=d.trace_id;}
         else if(ev[1]==='file'){addFile(d);}
-        else if(ev[1]==='action'){if(d.name==='open_application')openApp();}
+        else if(ev[1]==='action'){if(d.name==='open_application')openApp();else if(d.name==='open_fit')openFit();else if(d.name==='ask_consent')askConsent();}
+        else if(ev[1]==='card'){addCard(d);}
       }
     }
     stepsEnd();clipsDone=true;
@@ -332,7 +371,7 @@ async function turn({text,blob,userBubble}){
   if(state!=='listening'){setState('idle');}
   if($('conv').checked&&state==='idle')setTimeout(()=>{if(state==='idle')listen();},350);
 }
-let lastLang='en';
+let lastLang='en',hold=false;
 function showReply(d){
   lastLang=d.language;
   const [body,tail]=(i=>i<0?[d.text,'']:[d.text.slice(0,i).trim(),d.text.slice(i)])(d.text.indexOf('(Sources:'));
@@ -340,14 +379,14 @@ function showReply(d){
   // reveal word by word so the answer feels live, capped at ~1.4s
   const words=body.split(/(\s+)/),step=Math.max(8,Math.min(60,1400/Math.max(1,words.length)));let k=0;
   const span=document.createElement('span');el.appendChild(span);
-  const tick=()=>{k+=2;span.textContent=words.slice(0,k).join('');feed.scrollTop=feed.scrollHeight;
+  const tick=()=>{k+=2;span.textContent=words.slice(0,k).join('');if(!hold)feed.scrollTop=feed.scrollHeight;
     if(k<words.length)setTimeout(tick,step*2);else{
       if(tail)el.insertAdjacentHTML('beforeend','<div class="src">'+esc(tail)+'</div>');
       if(d.language!=='en'&&d.text_en)el.insertAdjacentHTML('beforeend','<div class="en">English: '+esc(d.text_en.split('(Sources:')[0].trim())+'</div>');
       if(body.length>60){const q=curQ,bar=document.createElement('div');bar.className='save';
         bar.innerHTML='<button type="button" data-f="pdf">Save as PDF</button><button type="button" data-f="png">Save as image</button>';
         bar.querySelectorAll('button').forEach(b=>b.onclick=()=>exportAnswer(b.dataset.f,q,d));el.appendChild(bar);}
-      feed.scrollTop=feed.scrollHeight;}};
+      if(!hold)feed.scrollTop=feed.scrollHeight;}};
   tick();el.dataset.body=body;return el;
 }
 
@@ -443,7 +482,7 @@ async function handleFile(f){
   const fd=new FormData();fd.append('file',f,f.name);
   try{
     const d=await (await fetch('/sim/image',{method:'POST',body:fd,headers:H})).json();
-    stepsEnd();w.parentElement.remove();add('them',esc(d.reply));if(d.trace_id)loadTrace(d.trace_id);loadBooks();loadDocs();
+    stepsEnd();w.parentElement.remove();add('them',esc(d.reply));if(d.trace_id)loadTrace(d.trace_id);loadBooks();loadDocs();loadReady();
   }catch(e){w.parentElement.remove();add('them','<span class="err">I could not upload that file. Check your connection and try again.</span>');}
 }
 const drop=$('drop');let depth=0;
@@ -471,7 +510,8 @@ $('sideBtn').onclick=()=>$('side').classList.toggle('open');
 
 /* ---------- files, documents, bank file, loan application ---------- */
 let curQ='';
-function addFile(f){add('them','<a class="chip" href="'+esc(f.url)+'" download="'+esc(f.name)+'"><i data-lucide="download"></i>'+esc(f.name)+'</a>');}
+function addFile(f){add('them','<a class="chip" href="'+esc(f.url)+'" download="'+esc(f.name)+'"><i data-lucide="download"></i>'+esc(f.name)+'</a>'
+  +(f.verify?' <a class="chip" href="'+esc(f.verify)+'" target="_blank" rel="noopener"><i data-lucide="shield-check"></i>Verify page</a>':''));}
 async function exportAnswer(fmt,q,d){
   try{const r=await (await fetch('/sim/export',{method:'POST',headers:{...H,'Content-Type':'application/json'},
     body:JSON.stringify({fmt,question:q,reply:d.text,reply_en:d.text_en||'',language:d.language})})).json();addFile(r);}
@@ -504,6 +544,66 @@ $('appForm').onsubmit=async e=>{
   go.disabled=false;go.textContent='Draft it';
 };
 
+
+/* ---------- loan readiness, consent, scheme fit ---------- */
+const STATE={eligible:'Meets the conditions checked',almost:'Need a few more facts',not_eligible:'Not eligible',unverified:'Not confirmed'};
+const MARK={pass:'Met',fail:'Not met',unknown:'Not known yet',todo:'To do'};
+function readyHTML(d){
+  const a=d.affordability;
+  return '<div class="score"><b>'+d.score+'</b><span>out of 100 · '+esc({ready:'ready for a lender',getting_there:'getting there',early:'still early'}[d.band])+'</span></div>'
+   +'<div class="meter" role="img" aria-label="Score '+d.score+' of 100"><i style="width:'+d.score+'%"></i></div>'
+   +(a?'<p class="empty">Affordability: '+esc(a.band)+' ('+a.score+'/100). Cautious instalment up to ₹'+Math.round(a.emi).toLocaleString('en-IN')+' a month.</p>':'')
+   +d.factors.map(f=>'<div class="fac"><div>'+esc(f.label)+'<small>'+esc(f.reason)+'</small>'+(f.gain?'<small>'+esc(f.action)+'</small>':'')+'</div><div>'
+     +(f.gain?'<span class="gain">+'+f.gain+'</span>':'<b>'+f.points+'/'+f.max+'</b>')+'</div></div>').join('')
+   +(d.gst_issues?'<p class="empty" style="margin-top:8px">'+d.gst_issues+(d.gst_issues===1?' entry also holds':' entries also hold')+' up your GST draft. Fixing '+(d.gst_issues===1?'it':'them')+' helps both.</p>':'')
+   +'<p class="empty" style="margin-top:8px">'+esc(d.limitation)+'</p>';
+}
+async function loadReady(){
+  try{const c=await (await fetch('/sim/consent',{headers:H})).json();$('consent').checked=c.on;
+    if(!c.on){$('ready').innerHTML='<p class="empty">Turn on the switch below to see how ready your books look to a lender.</p>';return;}
+    const r=await (await fetch('/sim/readiness',{headers:H})).json();
+    $('ready').innerHTML=r.data?readyHTML(r.data):'<p class="empty">'+esc(r.text)+'</p>';}catch{}
+}
+$('consent').onchange=async e=>{await fetch('/sim/consent',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({on:e.target.checked})});loadReady();};
+$('readyBtn').onclick=loadReady;
+function askConsent(){$('side').classList.add('open');const r=$('consentRow');r.classList.remove('flash');void r.offsetWidth;r.classList.add('flash');r.scrollIntoView({block:'center'});}
+function fitHTML(list){
+  return list.map(f=>'<details class="sc"'+(f.status==='eligible'||f.status==='not_eligible'?' open':'')+'><summary>'+esc(f.name)+'<span class="pill '+f.status+'">'+esc(STATE[f.status])+'</span></summary>'
+    +(f.status==='unverified'?'<div class="cr">'+esc(f.summary)+'</div>':'')
+    +f.criteria.map(c=>'<div class="cr"><b class="'+c.status+'">'+MARK[c.status]+'</b> · '+esc(c.label)+'<small>'+esc(c.why)+'</small>'
+      +(c.status==='fail'||c.status==='todo'?'<small><b>What would change this:</b> '+esc(c.need)+'</small>':'')
+      +(c.clause_id?'<small>Official clause: '+(c.source_url?'<a href="'+esc(c.source_url)+'" target="_blank" rel="noopener">'+esc(c.clause_ref)+'</a>':esc(c.clause_ref))+'</small>':'')+'</div>').join('')+'</details>').join('')
+    +'<p class="empty">This checks the published conditions only. The bank or portal decides the application.</p>';
+}
+function addCard(d){
+  let b;
+  if(d.kind==='fit')b=add('them',fitHTML(d.data),'cardwrap');
+  else if(d.kind==='readiness'){b=add('them',readyHTML(d.data),'cardwrap');loadReady();}
+  const prev=b&&b.parentElement.previousElementSibling;
+  if(prev){hold=true;requestAnimationFrame(()=>{feed.style.scrollBehavior='auto';prev.scrollIntoView({block:'start'});feed.style.scrollBehavior='';});}   // keep the reply visible above the card
+}
+let fitLoaded=false;
+async function openFit(){
+  $('fitDlg').classList.add('on');
+  if(fitLoaded)return;
+  try{const d=await (await fetch('/sim/fit',{headers:H})).json();
+    $('fitFields').innerHTML=d.fields.map(f=>{const v=d.attrs[f.key];const id='f_'+f.key;
+      let ctl;
+      if(f.type==='choice')ctl='<select id="'+id+'" data-k="'+f.key+'"><option value="">Not sure</option>'+f.options.map(o=>'<option value="'+esc(o.value)+'"'+(v===o.value?' selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select>';
+      else if(f.type==='bool')ctl='<select id="'+id+'" data-k="'+f.key+'"><option value="">Not sure</option><option value="true"'+(v===true?' selected':'')+'>Yes</option><option value="false"'+(v===false?' selected':'')+'>No</option></select>';
+      else ctl='<input id="'+id+'" data-k="'+f.key+'" inputmode="decimal" value="'+(v!=null?esc(String(v)):'')+'">';
+      return '<div><label for="'+id+'">'+esc(f.label)+'</label>'+ctl+'</div>';}).join('');
+    fitLoaded=true;if(d.results.length)$('fitOut').innerHTML=fitHTML(d.results);
+  }catch{$('fitOut').innerHTML='<p class="err">I could not load the questions. Please try again.</p>';}
+}
+$('fitBtn').onclick=openFit;$('fitClose').onclick=()=>$('fitDlg').classList.remove('on');
+$('fitForm').onsubmit=async e=>{e.preventDefault();const go=$('fitGo');go.disabled=true;go.textContent='Checking…';
+  const attrs={};$('fitFields').querySelectorAll('[data-k]').forEach(el=>{if(el.value!=='')attrs[el.dataset.k]=el.value;});
+  try{const r=await (await fetch('/sim/fit',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({attrs})})).json();
+    $('fitOut').innerHTML=fitHTML(r.results);$('fitOut').scrollIntoView({behavior:'smooth',block:'start'});}
+  catch{$('fitOut').innerHTML='<p class="err">Something went wrong. Please try again.</p>';}
+  go.disabled=false;go.textContent='Check my fit';};
+
 /* ---------- business profile (first run) ---------- */
 async function loadProfile(){
   try{const p=await (await fetch('/sim/profile',{headers:H})).json();$('bizName').textContent=p.name;
@@ -515,7 +615,7 @@ $('setupForm').onsubmit=async e=>{e.preventDefault();
   const r=await (await fetch('/sim/profile',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({name:$('bName').value,gstin:$('bGst').value})})).json();
   if(r.name){$('bizName').textContent=r.name;$('setup').classList.remove('on');}};
 
-setLang(lang);setState('idle');icons();loadStatus();loadBooks();loadDocs();loadProfile();setInterval(loadStatus,20000);
+setLang(lang);setState('idle');icons();loadStatus();loadBooks();loadDocs();loadReady();loadProfile();setInterval(loadStatus,20000);
 </script>
 </body>
 </html>

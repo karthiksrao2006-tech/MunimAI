@@ -7,3 +7,6 @@ fastapi>=0.115
 uvicorn[standard]>=0.32
 
 imageio-ffmpeg
+segno>=1.6
+pymupdf>=1.24
+ddgs

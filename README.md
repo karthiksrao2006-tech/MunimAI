@@ -1,6 +1,6 @@
-# MunimAI
+# SaralcreditAI (repository: MunimAI)
 
-An agentic assistant on WhatsApp that turns a micro-enterprise's bills and UPI
+An agentic voice and text assistant that turns a micro-enterprise's bills and UPI
 activity into clean compliance records, matched government schemes, and a
 lender-ready credit file.
 
@@ -16,20 +16,46 @@ statement **3.2** — access to formal credit and schemes — with problem state
 
 ## Status
 
-Early. Infrastructure and the trust layer work; the agents are being built.
+Working end to end in a browser test console (WhatsApp is paused). Voice and text, in Kannada, Hindi and English.
 
 | Component | State |
 |---|---|
-| Bhashini ASR/TTS (Hindi, Kannada) | Working, verified round-trip |
-| Postgres 16 + pgvector schema | Applied, 11/11 guarantee tests passing |
-| Trace writer ("glass box") | Working |
-| Qwen2.5-7B-AWQ serving | Smoke-tested: 0.90 on JSON tool-calls, 14.4 GB VRAM |
-| Orchestrator + agents | Not built yet |
-| WhatsApp gateway | Not built yet |
-| Scheme knowledge base | Not built yet |
+| Voice + text assistant (Bhashini ASR/TTS/translation) | Working: reply in the user's language, spoken in Hindi/Kannada |
+| Scheme knowledge base | MUDRA, PMEGP, CGTMSE, PM SVANidhi, Stand-Up India, PM Vishwakarma, NSIC, SIDBI, Startup India, SISFS: verbatim official clauses with source URL and fetch date |
+| Document Q&A, web fallback, own knowledge | Working, each answer labelled with its source |
+| Bills to books, GST draft, affordability | Working; arithmetic in code, never by the model |
+| Bank file + loan application (PDF) | Working; Kannada/Hindi glyphs render |
+| **Sealed, verifiable bank file** | Working (see below) |
+| **Scheme fit: "what would make me eligible?"** | Working (see below) |
+| **Books and GST discipline readiness** | Working (see below) |
+| Boss/worker models | Qwen2.5-7B on GPU (17 GB cap), Gemma 3 4B on system RAM |
+| Tests | 56 passing (`python -m pytest eval`) |
+| WhatsApp channel | Paused (Meta account lock); the same pipeline serves the web console |
 
 Nothing here files a GST return or submits a loan application. Those actions are
-simulated, by design — see *Boundaries*.
+simulated, by design: see *Boundaries*.
+
+## New: trust and guidance
+
+**1. A bank file that proves itself.** Building the bank file or loan application
+seals the books behind it: every ledger entry and every proof document goes into a
+SHA-256 hash chain, and a QR code and seal id are stamped on page 1. The verify page
+(`/verify/<token>`) recomputes the chain, shows the totals the PDF must match, flags
+any change to the owner's live books since sealing, and checks an uploaded PDF
+byte for byte against the issued file. Honest limit: the notary is the server; a
+deployment would also anchor the seal with an outside timestamp authority. Set
+`PUBLIC_BASE_URL` so the QR points at a reachable address.
+
+**2. Scheme fit with reasons.** For each scheme the owner sees every published
+condition as met, not met, or not known yet, the official clause it comes from, and
+what would change a "no". Rules are deterministic code bound to clauses (no model
+writes a verdict) and the Verifier withholds any verdict that cannot cite a current
+clause.
+
+**3. One ledger, two jobs.** The same bills that make the GST draft also feed a
+0-100 books-and-GST-discipline score. Every point has a reason; every missing point
+names the fix and its worth. It needs the owner's consent (switch in the side panel)
+and says plainly what it cannot see (whether returns were filed on time).
 
 ---
 

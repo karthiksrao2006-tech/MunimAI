@@ -39,6 +39,11 @@ from . import export as _export
 from .agents import general as _general
 from .agents.application import BANKS, SCHEMES, AppRequest, ApplicationAgent
 from .agents.dossier import _KIND_LABEL, DossierAgent
+from .agents import fit as _fit
+from .agents import readiness as _ready
+from .agents.credit import CreditAgent
+from . import proof as _proof
+from . import schema_ext
 from .router import CANNED, classify
 from .bhashini_client import BhashiniClient, BhashiniConfigError
 from .config import DBSettings, LLMSettings, WhatsAppSettings
@@ -88,6 +93,7 @@ def _get_conn() -> psycopg.Connection:
 try:
     with psycopg.connect(_db.conninfo) as _c:
         docstore.ensure_table(_c)
+        schema_ext.ensure(_c)
 except Exception:  # the app still starts; document features report the error when used
     pass
 
@@ -284,12 +290,49 @@ def _converse(text: str, lang: str, bid: int, conn: psycopg.Connection,
             "understood": text_en, "audio": clips, "trace_id": str(trace.trace_id)}
 
 
+
+def _latest_verify(conn: psycopg.Connection, bid: int) -> Optional[str]:
+    r = conn.execute("SELECT token FROM seals WHERE business_id=%s ORDER BY id DESC LIMIT 1", (bid,)).fetchone()
+    return f"/verify/{r[0]}" if r else None
+
+
+def _fit_answer(conn: psycopg.Connection, bid: int) -> tuple[str, Optional[list], Optional[str]]:
+    attrs = conn.execute("SELECT attrs FROM businesses WHERE id=%s", (bid,)).fetchone()[0] or {}
+    if not attrs:
+        return ("I can check which schemes you meet and what would change a no. I need a few facts first: "
+                "use the Scheme fit button and answer what you can.", None, "open_fit")
+    fits = _fit.FitAgent(conn).evaluate(bid, attrs)
+    return _fit.reply_text(fits), [_fit.to_dict(f) for f in fits], None
+
+
+def _readiness_answer(conn: psycopg.Connection, bid: int, trace: Optional[Trace] = None):
+    view, claim = _ready.ReadinessAgent(conn).assess(bid, trace=trace)
+    verdict = Verifier(conn).check(claim)
+    if not verdict.passed:
+        return ("To check how ready your books look, I need your OK to read them. Switch on 'Let SaralcreditAI read my "
+                "books' in the side panel. You can switch it off any time.", None, "ask_consent")
+    aff = None
+    try:
+        cv, _cclaim = CreditAgent(conn).assess(bid, trace=trace)
+        if cv.band != "insufficient":
+            aff = {"band": cv.band, "score": cv.score, "emi": cv.suggested_emi_paise / 100}
+    except Exception:
+        pass
+    data = _ready.to_dict(view)
+    data["affordability"] = aff
+    return _ready.reply_text(view, aff), data, None
+
+
 def _handle_question(question: str, business_id: int,
                      conn: psycopg.Connection, trace: Trace) -> str:
     intent = classify(question)
     trace.emit("router", "route", {"intent": intent})
     if intent in CANNED:
         return CANNED[intent]
+    if intent == "fit":
+        return _fit_answer(conn, business_id)[0]
+    if intent == "readiness":
+        return _readiness_answer(conn, business_id, trace)[0]
     if intent != "eligibility":
         trace.emit("router", "route", {"to": "general"})
         text, source = _general.answer(conn, business_id, question, _llm,
@@ -560,14 +603,20 @@ def _sse(event: str, data: dict) -> str:
 def _special(intent: str, text_en: str, bid: int, conn: psycopg.Connection, trace: Trace,
              lang: str, munim_id: Optional[str]):
     """Deliverables: the bank file, the application form prompt, answer export."""
-    file_ev = None
+    file_ev, after = None, []
     if intent == "dossier":
         yield _sse("stage", {"id": "dossier", "label": "Preparing your bank file"})
-        pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
+        pdf = _proof.seal_pdf(conn, bid, DossierAgent(conn, _llm).build(bid, trace=trace), "bank_file")
         tok = _stash(pdf, "SaralcreditAI-bank-file.pdf", "application/pdf")
-        msg = ("Your bank file is ready. It has your books, GST summary, the proofs on file and what is still "
+        msg = ("Your bank file is ready and its books are sealed: the bank can scan the QR code on page 1 to check that "
+               "the file matches your books. It has your books, GST summary, the proofs on file and what is still "
                "missing. Please review it before you share it. Tick the documents you want attached in the Documents list.")
-        file_ev = {"url": f"/sim/file/{tok}", "name": "SaralcreditAI-bank-file.pdf"}
+        file_ev = {"url": f"/sim/file/{tok}", "name": "SaralcreditAI-bank-file.pdf", "verify": _latest_verify(conn, bid)}
+    elif intent in ("fit", "readiness"):
+        yield _sse("stage", {"id": intent, "label": "Checking the scheme conditions" if intent == "fit" else "Reading your books"})
+        msg, data, act = (_fit_answer(conn, bid) if intent == "fit" else _readiness_answer(conn, bid, trace))
+        after = ([_sse("card", {"kind": intent, "data": data})] if data is not None else []) + \
+                ([_sse("action", {"name": act})] if act else [])
     elif intent == "application":
         msg = ("I can draft the covering letter and loan application for your bank. Use the Loan application "
                "button to choose the bank, scheme, amount and purpose.")
@@ -591,6 +640,9 @@ def _special(intent: str, text_en: str, bid: int, conn: psycopg.Connection, trac
     yield _sse("reply", {"text": text, "text_en": msg, "language": lang})
     if file_ev:
         yield _sse("file", file_ev)
+    for ev in after:
+        yield ev
+    return text
 
 
 def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[str]):
@@ -632,8 +684,15 @@ def _chat_stream(kind: str, payload, lang: str, speak: bool, munim_id: Optional[
         yield _sse("understood", {"text": text_en, "language": lang})
         send_seed("question", text_en, lang)
         intent = classify(text_en)
-        if intent in ("dossier", "application", "export"):
-            yield from _special(intent, text_en, bid, conn, trace, lang, munim_id)
+        if intent in ("dossier", "application", "export", "fit", "readiness"):
+            spoken = yield from _special(intent, text_en, bid, conn, trace, lang, munim_id)
+            if speak and lang in ("hi", "kn") and spoken:
+                yield _sse("stage", {"id": "speaking", "label": "Preparing the voice"})
+                try:
+                    for i, clip in enumerate(iter_clips(_bhashini, spoken, lang)):
+                        yield _sse("clip", {"i": i, "b64": clip})
+                except Exception as exc:
+                    trace.emit("router", "error", {"stage": "tts", "error": str(exc)})
             yield _sse("done", {}); return
         yield _sse("stage", {"id": "thinking", "label": "Checking the official rules"})
         reply_en = _handle_question(text_en, bid, conn, trace)
@@ -706,9 +765,9 @@ def sim_dossier(x_munim_id: Optional[str] = Header(None)) -> dict:
     try:
         bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
-        pdf = DossierAgent(conn, _llm).build(bid, trace=trace)
+        pdf = _proof.seal_pdf(conn, bid, DossierAgent(conn, _llm).build(bid, trace=trace), "bank_file")
         return {"url": f"/sim/file/{_stash(pdf, 'SaralcreditAI-bank-file.pdf', 'application/pdf')}",
-                "name": "SaralcreditAI-bank-file.pdf"}
+                "name": "SaralcreditAI-bank-file.pdf", "verify": _latest_verify(conn, bid)}
     finally:
         conn.close()
 
@@ -731,9 +790,10 @@ def sim_application(body: dict, x_munim_id: Optional[str] = Header(None)) -> dic
     try:
         bid = _sim_business(conn, x_munim_id); conn.commit()
         trace = Trace(business_id=bid); trace.attach_db(conn)
-        pdf = ApplicationAgent(conn, _llm, tr).build(bid, req, trace=trace)
+        pdf = _proof.seal_pdf(conn, bid, ApplicationAgent(conn, _llm, tr).build(bid, req, trace=trace), "application")
         name = "SaralcreditAI-loan-application.pdf"
-        return {"url": f"/sim/file/{_stash(pdf, name, 'application/pdf')}", "name": name}
+        return {"url": f"/sim/file/{_stash(pdf, name, 'application/pdf')}", "name": name,
+                "verify": _latest_verify(conn, bid)}
     finally:
         conn.close()
 
@@ -746,6 +806,111 @@ def sim_export(body: dict) -> dict:
               str(body.get("reply_en", ""))[:6000], str(body.get("language", "en")))
     name = f"SaralcreditAI-answer.{fmt}"
     return {"url": f"/sim/file/{_stash(data, name, 'image/png' if fmt == 'png' else 'application/pdf')}", "name": name}
+
+
+@app.get("/sim/fit")
+def sim_fit_get(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        attrs = conn.execute("SELECT attrs FROM businesses WHERE id=%s", (bid,)).fetchone()[0] or {}
+        fields = [{"key": k, "label": lbl, "type": t, "options": [{"value": v, "label": l} for v, l in opts]}
+                  for k, lbl, t, opts in _fit.FIELDS]
+        return {"attrs": attrs, "fields": fields,
+                "results": [_fit.to_dict(f) for f in _fit.FitAgent(conn).evaluate(bid, attrs)] if attrs else []}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/fit")
+def sim_fit_save(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
+    allowed = {k: (t, {v for v, _ in opts}) for k, _, t, opts in _fit.FIELDS}
+    attrs: dict = {}
+    for k, v in (body.get("attrs") or {}).items():
+        if k not in allowed or v in (None, ""):
+            continue
+        t, opts = allowed[k]
+        if t == "number":
+            try:
+                attrs[k] = float(v)
+            except (TypeError, ValueError):
+                continue
+        elif t == "bool":
+            attrs[k] = v in (True, "true", "yes", 1)
+        elif v in opts:
+            attrs[k] = v
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id)
+        conn.execute("UPDATE businesses SET attrs=%s WHERE id=%s", (json.dumps(attrs), bid))
+        conn.commit()
+        fits = _fit.FitAgent(conn).evaluate(bid, attrs)
+        return {"attrs": attrs, "results": [_fit.to_dict(f) for f in fits], "text": _fit.reply_text(fits)}
+    finally:
+        conn.close()
+
+
+@app.get("/sim/readiness")
+def sim_readiness(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        text, data, act = _readiness_answer(conn, bid)
+        return {"text": text, "data": data, "action": act}
+    finally:
+        conn.close()
+
+
+_CONSENT = "loan_eligibility_assessment"
+
+
+@app.get("/sim/consent")
+def sim_consent_get(x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id); conn.commit()
+        return {"on": bool(conn.execute("SELECT has_active_consent(%s,%s)", (bid, _CONSENT)).fetchone()[0])}
+    finally:
+        conn.close()
+
+
+@app.post("/sim/consent")
+def sim_consent_set(body: dict, x_munim_id: Optional[str] = Header(None)) -> dict:
+    conn = _get_conn()
+    try:
+        bid = _sim_business(conn, x_munim_id)
+        conn.execute("UPDATE consents SET revoked_at=now() WHERE business_id=%s AND purpose=%s AND revoked_at IS NULL",
+                     (bid, _CONSENT))
+        if body.get("on"):
+            conn.execute(
+                "INSERT INTO consents (business_id, purpose, scope, expires_at, granted_via)"
+                " VALUES (%s,%s,%s, now() + interval '90 days', 'web_click')", (bid, _CONSENT, ["ledger"]))
+        conn.commit()
+        return {"on": bool(body.get("on"))}
+    finally:
+        conn.close()
+
+
+from fastapi.responses import HTMLResponse
+
+
+@app.get("/verify/{token}")
+def verify_page(token: str) -> HTMLResponse:
+    conn = _get_conn()
+    try:
+        return HTMLResponse(_proof.render(_proof.verify(conn, token), token))
+    finally:
+        conn.close()
+
+
+@app.post("/verify/{token}/check")
+async def verify_check(token: str, file: UploadFile = File(...)) -> HTMLResponse:
+    data = await file.read()
+    conn = _get_conn()
+    try:
+        return HTMLResponse(_proof.render(_proof.verify(conn, token), token, _proof.pdf_matches(conn, token, data)))
+    finally:
+        conn.close()
 
 
 @app.get("/sim/file/{token}")

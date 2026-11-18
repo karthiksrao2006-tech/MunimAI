@@ -22,6 +22,7 @@ from ..trace import Trace
 from .compliance import ComplianceAgent
 from .credit import CreditAgent
 from .document import DocumentAgent
+from .readiness import ReadinessAgent
 from .scheme import SchemeAgent
 from .verifier import Verifier
 
@@ -148,6 +149,18 @@ class DossierAgent:
         else:
             h.append("<h2>Affordability</h2><p class='muted'>Not included: the owner has not given consent "
                      "for a credit assessment.</p>")
+
+        try:
+            rview, rclaim = ReadinessAgent(c).assess(business_id, trace=trace)
+            if verifier.check(rclaim).passed:
+                fx = "".join(f"<tr><td>{t(f.label)}</td><td class='r'>{f.points} / {f.max_points}</td><td>{t(f.reason)}</td></tr>"
+                             for f in rview.factors)
+                h.append(f"<h2>Books and GST discipline</h2><p>Score <b>{rview.score} / 100</b>, from {rview.entries} entries. "
+                         f"{rview.gst_issues} {'entry is' if rview.gst_issues == 1 else 'entries are'} still holding up the GST draft.</p>"
+                         f"<table><tr><th>Check</th><th class='r'>Points</th><th>Why</th></tr>{fx}</table>"
+                         f"<p class='muted'>{t(rview.limitation)}</p>")
+        except Exception:
+            pass
 
         have = {d["kind"] for d in docs}
         check = "".join(f"<tr><td>{lbl}</td><td class='{'ok' if k in have else 'no'}'>"
