@@ -111,9 +111,6 @@ ratio, one degenerate output), while Bhashini round-tripped both languages at
 100% script accuracy.
 
 ---
-
-## Setup
-
 Requires Python 3.11+, and a reachable PostgreSQL 16 with the `vector` extension.
 
 ```bash
